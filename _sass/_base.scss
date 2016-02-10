@@ -79,6 +79,43 @@ li {
 
 
 /**
+ * Tables
+ * Got from https://gist.github.com/andyferra/2554919
+ */
+table {
+    padding: 0;
+    border-spacing: 0;          /* 相邻单元格之间不间隔 */
+    border-collapse: collapse;  /* 相邻单元格的框线合并 */
+    margin-bottom: 15px;
+}
+
+table tr {
+    border-top: 1px solid #cccccc;
+    background-color: white;
+    margin: 0;
+    padding: 0;
+}
+
+table tr:nth-child(2n) {  /* tr:nth-child 之间不能有空格 */
+    background-color: #f8f8f8;
+}
+
+table tr th {
+    font-weight: bold;
+    border: 1px solid #cccccc;
+    margin: 0;
+    padding: 6px 13px;
+}
+
+table tr td {
+    border: 1px solid #cccccc;
+    margin: 0;
+    padding: 6px 13px;
+}
+
+
+
+/**
  * Headings
  */
 h1, h2, h3, h4, h5, h6 {
