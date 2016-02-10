@@ -9,7 +9,7 @@
 title: Wonicon的日常灌水
 email: conciselove@outlook.com
 description: > # this means to ignore newlines until "baseurl:"
-    Wonicon的日常灌水处, 水分充足.
+    Powered by Jekyll with default theme
 baseurl: "" # the subpath of your site, e.g. /blog
 url: "http://www.wonicon.com" # the base hostname & protocol for your site
 github_username: Wonicon
