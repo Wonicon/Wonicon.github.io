@@ -24,3 +24,20 @@ boot loader复杂话后，链接时需要增加些注意。 0x7C00 是首条指�
 由于格式化函数里有对`long long`类型的数进行处理，在`-m32`的编译选项下，会生成`__udiv3di3`等一系列软件模拟 64 位数运算的函数。令我感到奇怪的是，明明已经使用`-fno-builtin`回避内置函数了，为什么还会夹带编译器的私货？然后我发现我使用的标准是`-std=gnu11`，如果改成`-std=c11`，那么可能不会生成`__udiv3di3`这样的函数，不过内联汇编的关键字就需要加下划线了。
 
 我参考了 JOS 的 Makefile 的解决办法，发现他们在链接时还是额外加上了 gcc 的库。gcc 的选项`-print-libgcc-file-name`可以打印标准库的归档文件的路径，加上对应的编译选项能输出对应的归档文件（主要是`-m32`的影响）。
+
+## 串口输出
+
+在 QEMU 下，通过串口将内核的调试信息输出到标准输出上是极好的一件事。串口输出作为一个基本的工具，一般在实验框架中是提供好的，但是还是要知道怎么从已有的资料中明确串口的使用方法并编码实现，[OSDev 的 Serial Ports 条目](http://wiki.osdev.org/Serial_Ports)的内容已经足够了。
+
+一个关键的问题是，用`-serial stdio`作为 qemu 的启动选项后，内核代码访问哪些个端口去进行串口设备所规定的操作。根据上面那个 OSDev 的链接，一共有四个串口：COM1、COM2、COM3 和 COM4，其提供的 4 个起始端口号在 qemu 下是正确可用的：
+
+|COM Port|IO Port|
+|--------|-------|
+|COM1|3F8h|
+|COM2|2F8h|
+|COM3|3E8h|
+|COM4|2E8h|
+
+更加保险的做法是扫面BIOS Data Area，从地址 0x4000 开始的 4 个连续的 16 位数记录了从 COM1 到 COM4 这四个串口的起始端口号（[OSDev 上的参考内容](http://wiki.osdev.org/Memory_Map_(x86)#BIOS_Data_Area_.28BDA.29)）。
+
+要想使用全部 4 个串口，只需要设置多个`-serial dev`作为 qemu 的启动选项（详见 [qemu 的文档](http://wiki.qemu.org/download/qemu-doc.html)，搜索`-serial dev`快速定位），比如`-serial stdio -serial file:foo -serial file:bar`就会将标准输入输出作为 COM1，文件 foo 和 bar 分别作为 COM2 和 COM3。
