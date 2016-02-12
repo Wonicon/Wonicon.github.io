@@ -5,7 +5,7 @@ categories: 学习
 tags: 英语 游戏 超次元游戏-海王星
 ---
 
-## 2016-02-30
+## 2016-02-10
 
 ### Hyperdimension Neptunia Re;Birth3 V GENERATION
 
@@ -26,7 +26,7 @@ tags: 英语 游戏 超次元游戏-海王星
 |bawl|大哭|
 |tank|[美俚] 崩溃|
 |mock|愚弄|
-|creep sb out|让人起鸡皮疙瘩|
+|creep sb. out|让人起鸡皮疙瘩|
 |hang|[口语] 诀窍|
 |mole|鼹鼠|
 |snooty|高傲自大的 (形容 Noire)|
@@ -40,3 +40,45 @@ tags: 英语 游戏 超次元游戏-海王星
 |pajama|睡衣裤 (普路托prpr)|
 |to top it off|最重要的是|
 |fortuitous|偶然的|
+
+## 2016-02-12
+
+### Hyperdimension Neptunia Re;Birth3 V GENERATION
+
+|生词|解释|
+|----|----|
+|culprit|犯人|
+|hang glider|悬挂式滑翔机|
+|exhilarating|令人振奋的|
+|in no time flat|迅速地 (电视购物里这么急切地想让人破产没问题吗)|
+|roll out|推出|
+|the Skillseal affliction|被锁技能的痛苦 (affliction 这么用啊)|
+|chum|密友 (基友？)|
+|chow|吃|
+|tuck leg|盘腿？|
+|bum, butt|屁股|
+|pry|撬|
+|gross|粗俗的|
+|cochlea|耳蜗|
+|sadistic|虐待狂的|
+|gunk|泥状物|
+|cotton swab|棉签，棉拭子|
+|sorely|严重地|
+|incantation|咒语|
+|ripped|撕破的|
+|dud|衣服|
+|fowl|家禽|
+|beak|喙|
+|peasant|乡下人|
+|moan|抱怨|
+|viral|病毒的|
+|vicious|凶猛的|
+
+
+Neptune 和 Pururuto 主持 Nepstation 的电视购物时的台词：
+
+    pry open that wallet and shove your money directly into the TV.
+
+敲开钱包什么鬼，塞进电视什么鬼！
+
+恶意！问答环节里问 Pururuto 的昵称，你们明明都把原名翻译成 Plutia 了，为什么这里出现了罗马音 Pururuto!
