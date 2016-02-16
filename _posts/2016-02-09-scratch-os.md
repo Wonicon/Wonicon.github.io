@@ -41,3 +41,29 @@ boot loader复杂话后，链接时需要增加些注意。 0x7C00 是首条指�
 更加保险的做法是扫面BIOS Data Area，从地址 0x4000 开始的 4 个连续的 16 位数记录了从 COM1 到 COM4 这四个串口的起始端口号（[OSDev 上的参考内容](http://wiki.osdev.org/Memory_Map_(x86)#BIOS_Data_Area_.28BDA.29)）。
 
 要想使用全部 4 个串口，只需要设置多个`-serial dev`作为 qemu 的启动选项（详见 [qemu 的文档](http://wiki.qemu.org/download/qemu-doc.html)，搜索`-serial dev`快速定位），比如`-serial stdio -serial file:foo -serial file:bar`就会将标准输入输出作为 COM1，文件 foo 和 bar 分别作为 COM2 和 COM3。
+
+## 虚拟 8086 模式
+
+为了使用 qemu 的 vbe 2.0 扩展，需要在保护模式下使用 bios 中断（话说应该也可以直接对显示卡进行端口IO，不过没找到相关资料）。
+
+根据一些资料，我目前采取的进入 v86m 的方式是在一个中断处理程序里克隆一份保存现场，修改 eflags 使得 vm 位有效，然后查询 bios 的中断向量表(IVT，注意与中断描述符表区分），得到段基址和段内偏移，用来修改 cs 和 eip。最后 iret 直接进入到 bios 的中断向量里。由于之前克隆了现场，所以 iret 执行完弹栈操作后，esp 刚好指向正版的中断现场，我期望 bios 最后执行 iret 就能直接恢复。
+
+在这个大方向上，遇到了些问题，记录如下：
+
+### 实模式下段转换机制
+
+我混淆了实模式和保护模式的段转换机制。实模式下是直接将段寄存器的值左移 4 位加到 ip 上的。我一开始甚至为了能进入到自己写的 16 位代码中而专门准备了段描述符。由于地址限制在 20 位以内，我暂时不打算自己写 16 位代码，而是直接进入 BIOS 的中断服务程序。
+
+### IVT 与 IDT 是不同的
+
+http://wiki.osdev.org/Interrupt_Vector_Table
+
+http://wiki.osdev.org/Interrupt_Descriptor_Table
+
+### 在 BIOS 的第一条指令上重启（Triple Fault）
+
+第一条指令是 cli，由于 GDB 估计只支持扁平模式，所以显式的是问好或者全0，要手动计算线性地址。iret 发现现场镜像（image）的 VM是 1，就自动把 CPL 改成了 3。这个特权级一般无法执行关中断这种危险的指令，不过可以修改 eflags 的 iopl 位，它表示 io 相关指令所允许的最大特权级（数值意味上）。
+
+### 在一条 IO 指令上处罚 GP
+
+最外层的表现是导致 Triple Fault，通过 OSDev 的[这个帖子](http://forum.osdev.org/viewtopic.php?f=1&t=25523)发现了让 qemu 报告异常的方法：启动选项 `-d int,cpu_reset`。
