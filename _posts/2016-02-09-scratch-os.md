@@ -64,6 +64,12 @@ http://wiki.osdev.org/Interrupt_Descriptor_Table
 
 第一条指令是 cli，由于 GDB 估计只支持扁平模式，所以显式的是问好或者全0，要手动计算线性地址。iret 发现现场镜像（image）的 VM是 1，就自动把 CPL 改成了 3。这个特权级一般无法执行关中断这种危险的指令，不过可以修改 eflags 的 iopl 位，它表示 io 相关指令所允许的最大特权级（数值意味上）。
 
-### 在一条 IO 指令上处罚 GP
+### 在一条 IO 指令上触发 GP
 
 最外层的表现是导致 Triple Fault，通过 OSDev 的[这个帖子](http://forum.osdev.org/viewtopic.php?f=1&t=25523)发现了让 qemu 报告异常的方法：启动选项 `-d int,cpu_reset`。
+
+查阅 80386 手册 out 指令说明，发现其在 v86m 模式下，会考察 TSS 中 IO map。由于默认的 TR 为 0，所以取出的描述符是第一个全空的，指向的 TSS 从 0 地址开始，那里是 IVT，内容丰富，会出现 IO map 置 1 （不允许）的情况。
+
+为了设置 TSS，不得不提前进行 GDT 的设置。设置完 GDT，执行 int 指令时，抛出了 GP(8) 异常，8 代表的是选择符，即我设置的 CS 段寄存器的值，原因是特权级不够，我想当然地把 GDT 里的描述符 DPL 设置成了 3，而 IDT 那里还是 0。
+
+不过设置了 TSS 后还是 Triple Fault......
