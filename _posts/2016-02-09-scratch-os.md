@@ -13,7 +13,7 @@ tags: 编程 操作系统 计算机系统
 
 虽说要从零代码写起，不过 boot loader 我还是直接搬运了 [JOS](https://pdos.csail.mit.edu/6.828/2014/) 的代码，主要是想快点进入到内核代码的编写，毕竟 boot loader 和内核的代码不是一个位面的，我并不想一直盯着 BIOS 打转。不过我一开始的设想是 boot loader 做的很简单，只是单纯地拷贝内核代码。但是这要求内核代码有足够简单的结构，而准备这样的易于拷贝和硬编码的结构让我苦思许久。而 JOS 的做法则是复杂化 boot loader 的逻辑。除了基本的环境设置外，还要直接解析 ELF 文件进行内核代码的拷贝。这样内核的编译可以相对简化，硬编码文件位置也比编码代码位置要简单许多（所以其实脏活是链接器做了）。但是 boot loader 的大小就变得比较紧张了。
 
-boot loader复杂话后，链接时需要增加些注意。 0x7C00 是首条指令的地址，对于可重定位的，有符号引用的模块间的编译链接，虽然我们能指定入口函数 entry point 和规定 .text 节的起始位置，但是稍加测试便可知这两者不能保证相等。一般情况下有 loader 准备环境，解析 EFL 文件找到 entry point，所以没什么问题。但是 boot loader 没有人来解析文件格式，必须保证 0x7C00 即是代码的起始也是逻辑的起始。这要保证入口符号是链接器见到的第一个重定位文件的第一个（有定义的）符号。所以在写 boot loader 的 makefile 时，一定要在某个层面上写死输入文件的顺序。
+boot loader复杂化后，链接时需要增加些注意。 0x7C00 是首条指令的地址，对于可重定位的，有符号引用的模块间的编译链接，虽然我们能指定入口函数 entry point 和规定 .text 节的起始位置，但是稍加测试便可知这两者不能保证相等。一般情况下有 loader 准备环境，解析 EFL 文件找到 entry point，所以没什么问题。但是 boot loader 没有人来解析文件格式，必须保证 0x7C00 即是代码的起始也是逻辑的起始。这要保证入口符号是链接器见到的第一个重定位文件的第一个（有定义的）符号。所以在写 boot loader 的 makefile 时，一定要在某个层面上写死输入文件的顺序。
 
 由于我在 64 位机器上编译，而内核目标是 32 位，所以一不小心忘记显式指明架构就导致了非常混乱的情况。总的来说是 boot loader 是 32 位的，并且解析的是 32 位的 ELF 文件，而独立编译的简单的“内核”代码则用了默认选项，导致生成了 64 位的 ELF 文件。这也就造成了 ELF 的魔数检查通过，但是 entry point 都能读错的情况。
 
@@ -72,4 +72,48 @@ http://wiki.osdev.org/Interrupt_Descriptor_Table
 
 为了设置 TSS，不得不提前进行 GDT 的设置。设置完 GDT，执行 int 指令时，抛出了 GP(8) 异常，8 代表的是选择符，即我设置的 CS 段寄存器的值，原因是特权级不够，我想当然地把 GDT 里的描述符 DPL 设置成了 3，而 IDT 那里还是 0。
 
-不过设置了 TSS 后还是 Triple Fault......
+不过设置了 TSS 后还是 Triple Fault......首先我没有想到 TR 所用的选择子格式与段寄存器的格式是一样的，而且我用错误的选择子 ltr 指令都没有问题，而使用正确的选择子，在 ltr 指令上就会抛出异常。原因是选择子对应的描述符不是合法的门描述符，主要是 type 字段附近与段描述符不一致。
+
+按照 80386 手册的说法，我只要将 TSS 的 IO Permission Base 的值设得比 TSS 描述符的 limit 大就能禁用，这样就不会因为 IO Permission 导致 out 指令抛出异常。但是试了一下不成功，而 OSDev 提供的数值 104 （参见 http://wiki.osdev.org/TSS），就能解决问题，成功禁用……
+
+### IRET 在进入 virtual mode 时的行为
+
+我参考的 80386 手册是这么描述弹栈行为的：
+
+```
+EFLAGS <- SS:[eSP + 8]; (* Sets VM in interrupted routine *)
+EIP <- Pop();
+CS <- Pop(); (* CS behaves as in 8086, due to VM = 1 *)
+throwaway <- Pop(); (* pop away EFLAGS already read *)
+ES <- Pop(); (* pop 2 words; throw away high-order word *)
+DS <- Pop(); (* pop 2 words; throw away high-order word *)
+FS <- Pop(); (* pop 2 words; throw away high-order word *)
+GS <- Pop(); (* pop 2 words; throw away high-order word *)
+IF CS.RPL > CPL
+THEN
+  TempESP <- Pop();
+  TempSS <- Pop();
+  SS:ESP <- TempSS:TempESP;
+FI;
+```
+
+而我观察栈上内容和实际各寄存器的值发现，应该是**先弹esp和ss再处理其它段寄存器**。但是令我疑惑的是，`CS.RPL`是哪来的？现在的 CS 可是作为值来使用的。此外 CPL 为 3，已经是最高了，为什么还是会有弹 esp 和 ss 的行为？
+
+### 从 virtual mode 退出
+
+在解决进入 virtual mode 时的现场镜像的布局问题后，我能保证进入 bios 后 esp 刚好指向正版的现场镜像，就好像直接通过 int 指令进来的一样。但是执行过程中还是重启了。观察 qemu 的异常记录，我发现 cs:ip 的内容变得很奇怪，主要是 cs 变成了 0x10 这么一个非常不适合做段基址的值。我使用 gdb 的 watch 来观察 $cs 什么时候改变，结果发现定位十分不精准（原因是 iret 改变了 cs 后，整个执行流就改变了，我却想用物理的扫描办法找到那个改了 cs 的指令）。最后只能通过手动 si 把整个执行流打印出来。结果如我所料，是在 iret 上发生了问题。不过第一次定位到这里，esp 的值比较奇怪，没有指到现场镜像，但是后面几次重现都指到了这里。关键问题是进入 virtual mode 后，CPL 变成了 3，此时无法改变 VM flag，整个行为如同实模式下，所以与预想的情况不同。
+
+## 画图
+
+最后虽然理论上能进出虚拟 8086 模式了，但是我发现 bios 中断比如用`int $0x10`改变显式模式完全没有作用，可能是端口 I/O 行为有变？心灰意冷，回避这个问题了。
+
+我从维基百科上[VESA BIOS Extension](https://en.wikipedia.org/wiki/VESA_BIOS_Extensions）条目看到，虽然标准没有强行规定模式号，但是还有有些通用的编号的，并且在 QEMU 上也测试成功了。另外，通过在实模式下手动获取控制器信息，我发现 QEMU 支持的 VBE 标准实际上已经到了 3 了（至少字符串是这么写的）！现在就直接在 boot 阶段设置好模式。参考 OSDev 的[Drawing_In_Protected_Mode](http://wiki.osdev.org/Drawing_In_Protected_Mode)和[Getting_VBE_Mode_Info](http://wiki.osdev.org/Getting_VBE_Mode_Info)，我还要获取 mode info，才能正确地定位像素点在显存中的位置。纵坐标 y 要乘的不是宽度，而是 pitch 字段，它表明了一行一共多少各字节。一个字节只代表一个像素的三色素之一，这一点很容易疏忽。同样的道理，横坐标 x 也要乘以 3。
+
+我利用 imagemagick 将图片转换成了和显存格式相同的数组，但是忘记了乘上 3，结果一直没有输出对。
+
+imagemagick 相关的参考资料：
+
+- [缩放](http://www.imagemagick.org/script/convert.php)
+- [RGB转换](https://www.imagemagick.org/discourse-server/viewtopic.php?t=15308)，我估计扩展名不针对图片的话都会转换成原始RGB格式
+- [返回尺寸](http://stackoverflow.com/questions/1555509/can-imagemagick-return-the-image-size)，竟然还有格式化输出……
+
