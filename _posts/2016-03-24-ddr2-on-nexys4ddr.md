@@ -25,3 +25,10 @@ tags: vivado. ddr2, Nexys4DDR
 
 现在转换思路，将官方的使用 DDR2 的 demo: [looper](https://reference.digilentinc.com/nexys4-ddr:looperdemo)
 进行精简，简化到只有读写数据并使用 LED 输出的功能。之后再观察如何从零开始配置。
+
+[具体的工程](https://github.com/NJU-CS-SYS/DDR2_demo_on_Nexys4DDR)放在了 GitHub 上，
+我将与实际应用相关的代码都删除干净，
+只保留了倍频的时钟、Bram2Ddr、MIG 和 XADC 模块，直接通过板子的 SW 去控制读写，用 LED 观察输出。
+但是，在布线时，出现了时序不满足的情况，最终上板测试也没有预期的效果。
+
+![img](assets/timing_failed.png)
