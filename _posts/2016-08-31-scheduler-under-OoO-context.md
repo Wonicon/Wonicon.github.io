@@ -17,7 +17,7 @@ Therefore, pelease allow me to keep a note here:
 > ... We use the term *dynamic instruction scheduler* to include
 > the instruction window and its associated instruction wake-up and select logic. ...
 
-The instruction window is corresponding to the several buffers above.
+The instruction window is corresponding to the buffers referred above.
 If we want to increase the memory level parallelism, traditionally
 we need to increase the size of the instruction window, resulting in
 huge area consumption and long latency due to the complexity of instruction wake-up select logic.
