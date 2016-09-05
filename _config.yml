@@ -17,8 +17,10 @@ github_username: Wonicon
 # Build settings
 # Use redcarpet instead of the default kramdown
 # to support fency code block
-markdown: redcarpet
-redcarpet:
-  extensions: ["no_intra_emphasis", "tables", "autolink", "strikethrough"]
+markdown: kramdown
+kramdown:
+    input: GFM
+    auto_ids: true
+    syntax_highlighter: rouge
 
 permalink: /:title.html
