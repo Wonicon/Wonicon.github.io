@@ -4,7 +4,7 @@ title: (gem5) SMT 的 ROB 动态分配问题
 category: 备忘
 ---
 
-默认情况下，支持 SMT 的 O3CPU 实现 的 ROB 采取按线程数平均分配的 Partitioned 策略，在
+默认情况下，支持 SMT 的 O3CPU 实现的 ROB 采取按线程数平均分配的 Partitioned 策略，在
 `gem5/src/cpu/o3/O3CPU.py` 中有所设置，搜索关键词 `smtROBPolicy`.
 根据 `gem5/src/cpu/o3/rob_impl.hh` 里 `Rob<Impl>` 的构造函数的逻辑，目前 ROB 支持的策略有
 Dynamic, Partitioned 以及 Threshold (嘛，大小写无所谓）。
