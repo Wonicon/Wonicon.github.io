@@ -7,7 +7,7 @@ tags: Linux shell fish-shell
 
 ### 测试环境
 
-Ubuntu 14.04 64bit
+Ubuntu 16.04 64bit
 
 fish shell 2.2.0
 
