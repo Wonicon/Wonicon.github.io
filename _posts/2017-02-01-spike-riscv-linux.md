@@ -227,3 +227,20 @@ cd build.with.payload
 提供了忽视 tty2,3,4 的解决方案。
 7. http://stackoverflow.com/questions/37849574/how-to-rebuild-bbl-with-payload-option
 提供了正确的 bbl 编译方法。
+
+## 题外话
+
+rocket chip 在 Zynq fpga 开发板上的部署项目 [fpga-zynq](https://github.com/ucb-bar/fpga-zynq) 当前的 README (commit 8d5981cdab99e8af9ab462a972ad2efcd25a0dc5)
+称启动 riscv-linux 的命令为：
+
+```
+root@zynq:~# ./fesvr-zynq +disk=/sdcard/riscv/root.bin bbl /sdcard/riscv/vmlinux
+```
+
+根据上面的经验，加上测试，果然，实际只需要这样就可以启动：
+
+```
+root@zynq:~# ./fesvr-zynq bbl
+```
+
+真正的内核文件 (vmlinux) 实际在 bbl 中。
