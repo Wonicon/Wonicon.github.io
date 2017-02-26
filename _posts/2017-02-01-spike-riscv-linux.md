@@ -186,7 +186,7 @@ make ARCH=riscv vmlinux
 ## 编译 bbl (Berkeley Boot Loader)
 
 虽然一开始编译 riscv-tools 时已经生成 bbl 了，但是其 payload 并非真正的 vmlinux, 这里要重新编译带 vmlinux payload 的 bbl.
-[这个链接)[http://stackoverflow.com/questions/37849574/how-to-rebuild-bbl-with-payload-option]里提供了编译方法，具体操作备份如下：
+[这个链接](http://stackoverflow.com/questions/37849574/how-to-rebuild-bbl-with-payload-option)里提供了编译方法，具体操作备份如下：
 
 ```
 export RISCV=/path/to/your/already/built/toolchain
