@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>《自制编程语言》开荒日志</title>
+  <meta name="description" content="虽然已经上过编译原理课程, 并且也实现了一个支持C语言的子集的编译器, 但是实验总体过程还是比较混沌的,而且比较重要的翻译策略基本都是按照实验讲义来的, 对于编译器到底该怎么实现, 还是没有一个十分清醒的认识.所以我觉得再了解几种编译器实现是比较有必要的.">
+
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="canonical" href="http://www.wonicon.com/crowbar.html">
+  <link rel="alternate" type="application/rss+xml" title="Wonicon 的日常灌水" href="http://www.wonicon.com/feed.xml">
+</head>
+
+
+  <body>
+
+    <header class="site-header">
+
+  <div class="wrapper">
+
+    <a class="site-title" href="/">Wonicon 的日常灌水</a>
+
+    <nav class="site-nav">
+      <a href="#" class="menu-icon">
+        <svg viewBox="0 0 18 15">
+          <path fill="#424242" d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.031C17.335,0,18,0.665,18,1.484L18,1.484z"/>
+          <path fill="#424242" d="M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0c0-0.82,0.665-1.484,1.484-1.484 h15.031C17.335,6.031,18,6.696,18,7.516L18,7.516z"/>
+          <path fill="#424242" d="M18,13.516C18,14.335,17.335,15,16.516,15H1.484C0.665,15,0,14.335,0,13.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.031C17.335,12.031,18,12.696,18,13.516L18,13.516z"/>
+        </svg>
+      </a>
+
+      <div class="trigger">
+        
+          
+          <a class="page-link" href="/about.html">关于</a>
+          
+        
+          
+        
+          
+        
+      </div>
+    </nav>
+
+  </div>
+
+</header>
+
+
+    <div class="page-content">
+      <div class="wrapper">
+        <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title" itemprop="name headline">《自制编程语言》开荒日志</h1>
+    <p class="post-meta">
+      <time datetime="2016-01-23T00:00:00+08:00" itemprop="datePublished">Jan 23, 2016</time>
+      分类: 学习
+    </p>
+    <p class="post-meta">
+    标签:
+    
+      <span> 编译原理</span>
+    
+    </p>
+  </header>
+
+  <div class="post-content" itemprop="articleBody">
+    <p>虽然已经上过编译原理课程, 并且也实现了一个支持C语言的子集的编译器, 但是实验总体过程还是比较混沌的,
+而且比较重要的翻译策略基本都是按照实验讲义来的, 对于编译器到底该怎么实现, 还是没有一个十分清醒的认识.
+所以我觉得再了解几种编译器实现是比较有必要的.</p>
+
+<p>不过, 相比于直接去看工业级产品的源代码, 我觉得暂时还是从一些简单的, 玩票的实现开始入手比较好. 从
+<a href="http://hllvm.group.iteye.com/group/topic/39194">这里</a>
+发现《自制编程语言》似乎还不错的样子, 两个语言实现, 一个是树遍历解释器, 一个是字节码虚拟机.
+在学校里的实验最终是直接生成汇编代码的, 虽然树遍历解释器看起来比较low的样子, 但是没有碰过的东西还是值得一试的, 便入手了一本.
+准备是在寒假(2016-01-17至2016-02-21)将其大致通读一番.</p>
+
+<p>虽然说是阅读笔记, 但是实际上大部分内容估计会是关于语言实现和编程方面的记录和小结.</p>
+
+<p>我在正式放假前大致翻阅了一下, 从第一个语言 crowbar 词法分析部分的讲解看来, 大概是直接说明代码片段的, 完整的代码自行下载,
+而不是像实验讲义那样引导性地给出策略. 颇有些懊恼, 因为读了源代码就要被牵着鼻子走了,
+不读源代码自己干的话, 这本书的价值就只剩几页语法说明了.
+不过在课程实验里编译器时就感受到了, 我对复杂软件设计的驾驭能力还是很不足的,
+<a href="https://github.com/Wonicon/naivecc">我的编译器</a>
+的模块设计就跟 shit 一样, 向别人学习也是应该的, 就像
+<a href="http://rubyonrails.org/doctrine/">Ruby on Rails 的教条</a>里提到的那样, 尝尝”店长推荐(omakase)”. 另外根据
+<a href="http://zhuanlan.zhihu.com/hllvm/20505562">R大这篇文章</a>
+的指导意见, 我决定不光要阅读代码, 还要把代码重头拷贝一遍.
+虽说不算原创性的工作了, 但是对于加深理解, 提高练度应该还是有所裨益的.</p>
+
+<h2 id="2016-01-23">2016-01-23</h2>
+
+<p>将前面计算器的实现抄了一遍, 并且发现了个别小 bug, 不少时间花在折腾 Makefile 上了 XD.</p>
+
+<p>正式开干 crowbar, 上来直接日了狗了, <code class="highlighter-rouge">CRB_Interpreter</code> 模块基本只是简单介绍了下几个重要的数据结构,
+flex 和 bison 的文件简单跳过倒是可以理解, 不过缺少思路还是非常影响阅读. 看来边看一节码一段代码的方法有些吃力.
+目前将 <code class="highlighter-rouge">crowbar.l</code> 和 <code class="highlighter-rouge">crowbar.y</code> 中与 crowbar 实现相关的内容跳过, 把词法<strong>分析</strong>和语法<strong>分析</strong>先单独码出来.
+就跟实验一开始写好 bison 代码一样, 只能用来判断语法是不是合法.</p>
+
+<p>本想迭代式地开发(抄), 不过目前看来还是得自顶向下地分析了.</p>
+
+<h2 id="2016-01-24">2016-01-24</h2>
+
+<p>实现了 MEM 模块里最基本的部分, 结果还因为做单元测试发现了自己的一个 BUG…..</p>
+
+<p>MEM 模块里<code class="highlighter-rouge">MEM_malloc</code>, <code class="highlighter-rouge">MEM_realloc</code>, <code class="highlighter-rouge">MEM_free</code>等函数实际上是对应的函数名加上后缀<code class="highlighter-rouge">_func</code>的宏,
+设置了默认的参数, 主要是为了使用<code class="highlighter-rouge">__FILE__</code>和<code class="highlighter-rouge">__LINE__</code>记录调用处信息.</p>
+
+<p><code class="highlighter-rouge">MEM_controller_tag</code>在最基本的内存块结构之上, 存储了错误处理的相关内容.</p>
+
+<p>memory.c 中的<code class="highlighter-rouge">Align</code>的作用是使<code class="highlighter-rouge">Header</code>占用的空间是8字节的倍数(64 位机器且 double 为 64 位), 且一定比<code class="highlighter-rouge">HeaderStruct</code>要多,
+暂时无法理解为什么要这么做, 因为删掉这部分代码似乎也能正常编译执行的样子.
+而且查看整个 <code class="highlighter-rouge">MEM_malloc</code> 在 DEBUG 模式下分配的数据, 在 64 位的机器上, 加不加 <code class="highlighter-rouge">Align</code> 都是一样的,
+不过还没有在 32 位机器上测试.</p>
+
+<p><code class="highlighter-rouge">MEM_create_controller</code>最后将全局块链表头赋值给了新建的块链表头. 这样相当于有两个插入锚点了.
+只看头部插入的没什么问题, 但是如何界定一个<code class="highlighter-rouge">MEM_Controller</code>负责的链表的尾部呢?
+不过目前没有连续 free 的需求,
+针对一个分配空间的 free, 只需要利用双向链表自删除就行了.</p>
+
+<p><code class="highlighter-rouge">rechain_block</code>用于 <code class="highlighter-rouge">MEM_realloc</code>, realloc 虽然能保证原来的数据是保留的,
+但是不能保证还是原来的指针,
+而这个指针值被存储在了前驱的 next 和后继的 prev 域上,
+所以需要重新链接, 不过作者在实现中使用了栈上的结构体保存将要被 realloc 的头部,
+realloc 完成后再赋值过去.
+但是由于 realloc 后原来的头部数据保留的, 所以我觉得没必要做这一个备份.</p>
+
+<h2 id="2016-02-01">2016-02-01</h2>
+
+<p>总结一下对于 MEM 模块代码的理解.
+MEM 模块的目的在于检查动态分配空间的正确性.
+一块动态分配空间正确性, 即分配区域两端不被修改,
+这样便需要保存空间大小以及额外的两片区域用来填充标记.
+此外, 出了错时要能知道这个动态空间是在源代码的何处申请的, 所以要记录文件名和行号.
+最后, 为了能够进行批量检查, 需要访问所有被分配的空间,
+所以各个分配空间需要被串成一个链表, 通过 controller 来访问这个链表进行批量检查.</p>
+
+<p>今天实现了 Storage 模块和 DBG 模块.
+Storage 模块相当于一个内存池. 即空间申请发生时,
+自己会额外多申请一些, 之后的申请如果空间够用, 就直接分配出去, 减少实际向系统申请空间的次数.
+不过 C runtime 的 malloc 大抵是有内存池的, 在其基础之上额外增加内存池,
+反而对减少系统调用这一点没有帮助.
+但确实如书中所说, 在解释器中, 经常会出现内存一点一点申请并且在一个阶段后前面申请的所有内存都可以保证不需要了.
+统一回收, 可能是 Storage 模块有实际意义的地方.</p>
+
+<p>Storage 模块将内存划分为页(page), 而页又划分为块(cell), 页以链表的形式串联起来.
+内存分配总是在页内进行的, 如果页内剩余 cell 数量不及需要的数量,
+则会插入一个新页, 使用统一的页大小和申请空间大小中较大的那个以保证分配.
+这样的话, 如果频繁地大块和小块交替申请, 则会有大量的页空间被浪费.</p>
+
+<p>DBG 模块没有什么特别的数据结构, 所以理解难度比较低.
+DBG 模块具有一些基本的高级调试工具, 比如打印日志所需的文件名, 行号, 格式字符串等.
+根据优先级打印日志这一点是我以前所没有想到的, 感觉是个减少冗余日志的好办法.
+不过文件名, 行号, 断言表达式这些, 都使用全局变量记录, 在实际的 assert 或者 panic 前,
+都要调用函数去设置这些全局变量, 我觉得没有必要, 直接传参数就好了.
+此外, 从宏传可变参数, 在 gcc 下可以使用 <code class="highlighter-rouge">__VA_ARGS__</code>,
+可空可变参数使用 <code class="highlighter-rouge">, ## __VA_ARGS__</code> 来消除多余的逗号.</p>
+
+<p>支援设施终于看完了, 之后可以专心看跟语言实现有关的部分了, exciting!</p>
+
+<h2 id="2016-02-03">2016-02-03</h2>
+
+<p>这几天断断续续地把前端基本码完了. 先是实现没有没有额外功能代码的 flex 和 bison 文件,
+这样就可以测试输入文件合不合乎词法和文法了.</p>
+
+<p>之后开始添加语法树结点的各种构造函数, 这里纯粹是体力活, 有大量的重复代码,
+不过这里就体现了 vim 文本<strong>编辑</strong>的强大了, 各种 copy 和录制宏.
+做学校编译原理实验时, 我为了这部分节省精力, 直接用兄弟子女树构造成 parsing tree,
+后来费了很大的力气才把它修正到 ast 上, 但是依然是兄弟子女树, 所以每个语句结点可以使用同一个构造函数.
+当然这对分析造成了很大的不方便.</p>
+
+<p>构造语法树这部分代码, 主要依赖于 create.c, string.c, util.c 这三个文件提供的函数.
+util.c 为前者提供了一些基础的工具, 主要是解释器指针的 getter, setter, 以及封装好存储器使用的 <code class="highlighter-rouge">crb_malloc</code>.
+最后要将前端跑起来还需要实现 interface.c 中的函数, 这部分函数如文件名所述, 是面向用户的接口,
+其声明也要放到 CRB.h 中. 从解释器的构造函数来看, 解释器自己也被放置在了存储器中, 并拥有了这个存储器,
+根据 <code class="highlighter-rouge">crb_malloc</code>, 这个存储器主要存储语法树结点. 不过现在看来只有执行彻底结束时才能释放这个存储器.
+树遍历解释器肯定要把树一直留着的, 想着分析完了就销毁那是代码生成的思路……</p>
+
+<p>话说最后与到了一个苦笑不得的问题. 测试时无论怎么输入, 随便一个 token 都能处罚语法错误.
+这时候自然要检查<code class="highlighter-rouge">yylex</code>的返回值. 在 flex 文件中, 输出 return 之前的枚举值,
+同时在 y.tab.c 中调用<code class="highlighter-rouge">yylex</code>的地方输出返回值.
+结果发现 flex 文件中枚举值是正常的, 但 y.tab.c 中就变成了一个非常小的数字.
+这个数字虽然小, 但是随着枚举值的增大而增大.
+当时不知道什么原因, 只能用类似二分法的方法排查是那一部分新增的代码导致了这个问题.
+最终我发现是<code class="highlighter-rouge">yylex</code>的声明写错了: <code class="highlighter-rouge">char yylex(void)</code>. 为了和 ascii 区分, 符号的枚举值自然是大于 255 的,
+这样就会溢出到一个比较小的数值. 虽然我也不知道我为什么要没事找事声明<code class="highlighter-rouge">yylex</code>……</p>
+
+<h2 id="2016-02-08">2016-02-08</h2>
+
+<p>这几天完成了语句的遍历函数和部分表达式求值的函数，以及采用引用计数的字符串垃圾回收模块。</p>
+
+<p>解释器的树遍历策略与编译器做语义分析时的遍历行为还是很像的。不过由于没有类型，而且没有引入数组，结构体和数组这两个分析时的难点都得以回避。整体来说树遍历执行这部分感觉上比较熟悉而且实现也颇套路化，给我留下特别印象的有两个地方：</p>
+
+<ol>
+  <li>elsif 链表</li>
+  <li>break、continue、return对执行流的影响</li>
+</ol>
+
+<p>elsif 链表是脱离通用 Statement 类型的存在。虽然作者在书中说<code class="highlighter-rouge">else if</code>是独立的语法单元，但是在学校实现的类 C 编译器里，<code class="highlighter-rouge">else if (...) { ... }</code>确实就是省略了花括号的<code class="highlighter-rouge">else { if (...) { ... } }</code>，以至于可以产生<code class="highlighter-rouge">else for</code>、<code class="highlighter-rouge">else while</code>、<code class="highlighter-rouge">else do</code>等新奇的写法。所以这里不能像处理<code class="highlighter-rouge">if</code>语句那样通用地处理分支，让我有些不爽。解析语句的函数的签名都十分冗长，但是可以用宏统一处理，可是<code class="highlighter-rouge">elsif</code>链表就不行了。我觉得比较好的做法是直接将<code class="highlighter-rouge">if</code>语句结点链表化，一个结点包含条件和语句块。当前结点条件不成立，自动前往下一个结点进行判断。如果条件为空而语句块不为空，那么是<code class="highlighter-rouge">else</code>结点，否则就是没有<code class="highlighter-rouge">else</code>，这样就能够统一处理了。</p>
+
+<p>break、continue我暂时没有在编译器中尝试实现，因为似乎要记录额外的标签信息。但是这里已经让我感受到了实现这些中断结构需要注意的地方。中断执行流的实现思路就是对每个语句做标记，在语句链表的遍历执行过程中，检查执行的语句类型，对影响控制流的语句进行特殊处理。return、break 和 continue 的差异主要的语句中体现。循环语句自身有一个需要遍历的语句链表。如果内部遇到了 return，那么就要一直向上返回到顶层，推出函数体。而如果遇到了 break，那么这个循环也不能执行了，但是不会影响到与这个循环同级的语句的执行，所以推出前要修改类型。而 continue 则中断了链表的遍历，循环行为本身不受影响。</p>
+
+<p>此外，在实现有垃圾回收的字符串变量管理上，有一个无奈的地方。那就是为了实现动态的销毁，不能使用存储器，即内存页的管理方式。内存页总是分配超过需求的空间，不能通过申请对象来释放空间，而只能通过销毁存储器来统一释放。为了动态释放，字符串脱离了存储器而直接申请内存，总觉得有些破坏设计的一致性。</p>
+
+<p>另外，在实现时，为了更好地模块化，我本想让每个 c 文件对应一个头文件，这样 corwbar.h 也不必那么冗长。但是实际操作过程中我发现，模块间的交叉引用过多，一不小心甚至能造成头文件的循环引用。最后还是将所有的声明塞到 crowbar.h 中（好像 windows.h），这样各个模块依赖简单，想要的很容易满足。</p>
+
+<h2 id="2016-02-13">2016-02-13</h2>
+
+<p>今天完成了字符串运算、取负和逻辑与/或的处理。字符串的运算，包含加法和比较运算。加法运算就是将两个字符串串接，返回一个新的字符串变量，对于非字符串变量，则格式化，并构造一个新的字符串用于进行加法运算。比较运算只要利用<code class="highlighter-rouge">strcmp</code>的返回值即可。值得注意的是，字符串变量是值引用，每使用一次就要释放一次。有些场合不一定是字符串类型，比如判断是不是 null，也要考察类型然后进行释放。</p>
+
+<p>与和或的逻辑放到一个函数里处理，结果我发现短路求值之后，无论是与表达式还是或表达式，都跟右边的操作数的真值是一致的，这一点以前一直没注意到。</p>
+
+<h2 id="2016-02-14">2016-02-14</h2>
+
+<p>今天完成了函数调用的执行。源码定义的函数调用比较简单，内置函数倒是要添加一系列代码。我一开始还担心格式化输出如何传递可变参数，后来发现完全是多虑了。因为格式化是通过字符串的加法运算实现的（如果只有非字符串类型，内部还会进行一次格式化），所以<code class="highlighter-rouge">print</code>函数本质上只会有一个参数。</p>
+
+<p>执行测试用例时发生了一些bug，主要是 tagged union 的 tag 没有标对；还遇到一个段错误，表达式求值的表达式为空，错误地点在 for 循环语句的循环条件判断。源代码中出错的位置是<code class="highlighter-rouge">for(;;)</code>，即条件为空，我实现时没有判断条件为空的情况，而作者的源码中是有的，真是照抄都抄不对。</p>
+
+  </div>
+
+  <div id="disqus_thread"></div>
+<script>
+  var disqus_config = function () {
+    this.page.url = "http://www.wonicon.com/crowbar.html";
+    this.page.identifier = "/crowbar.html";
+  };
+  (function() {
+    var d = document, s = d.createElement('script');
+    s.src = '//wonicon.disqus.com/embed.js';
+    s.setAttribute('data-timestamp', +new Date());
+    (d.head || d.body).appendChild(s);
+  })();
+</script>
+<noscript>
+  Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a>
+</noscript>
+
+
+</article>
+
+      </div>
+    </div>
+
+    <footer class="site-footer">
+
+  <div class="wrapper">
+
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <a href="mailto: conciselove@outlook.com">
+  <span class="icon icon--github">
+    <?xml version="1.0" encoding="utf-8"?>
+<!-- Generated by IcoMoon.io -->
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="32" height="32" viewBox="0 0 32 32">
+<path d="M28 5h-24c-2.209 0-4 1.792-4 4v13c0 2.209 1.791 4 4 4h24c2.209 0 4-1.791 4-4v-13c0-2.208-1.791-4-4-4zM2 10.25l6.999 5.25-6.999 5.25v-10.5zM30 22c0 1.104-0.898 2-2 2h-24c-1.103 0-2-0.896-2-2l7.832-5.875 4.368 3.277c0.533 0.398 1.166 0.6 1.8 0.6 0.633 0 1.266-0.201 1.799-0.6l4.369-3.277 7.832 5.875zM30 20.75l-7-5.25 7-5.25v10.5zM17.199 18.602c-0.349 0.262-0.763 0.4-1.199 0.4s-0.851-0.139-1.2-0.4l-12.8-9.602c0-1.103 0.897-2 2-2h24c1.102 0 2 0.897 2 2l-12.801 9.602z"></path>
+</svg>
+
+  </span>
+  <span class="username">
+    conciselove@outlook.com
+  </span>
+</a>
+
+        </ul>
+      </div>
+
+      <div class="footer-col footer-col-2">
+        <ul class="social-media-list">
+          
+          <li>
+            <a href="https://github.com/Wonicon"><span class="icon icon--github"><svg viewBox="0 0 16 16"><path fill="#828282" d="M7.999,0.431c-4.285,0-7.76,3.474-7.76,7.761 c0,3.428,2.223,6.337,5.307,7.363c0.388,0.071,0.53-0.168,0.53-0.374c0-0.184-0.007-0.672-0.01-1.32 c-2.159,0.469-2.614-1.04-2.614-1.04c-0.353-0.896-0.862-1.135-0.862-1.135c-0.705-0.481,0.053-0.472,0.053-0.472 c0.779,0.055,1.189,0.8,1.189,0.8c0.692,1.186,1.816,0.843,2.258,0.645c0.071-0.502,0.271-0.843,0.493-1.037 C4.86,11.425,3.049,10.76,3.049,7.786c0-0.847,0.302-1.54,0.799-2.082C3.768,5.507,3.501,4.718,3.924,3.65 c0,0,0.652-0.209,2.134,0.796C6.677,4.273,7.34,4.187,8,4.184c0.659,0.003,1.323,0.089,1.943,0.261 c1.482-1.004,2.132-0.796,2.132-0.796c0.423,1.068,0.157,1.857,0.077,2.054c0.497,0.542,0.798,1.235,0.798,2.082 c0,2.981-1.814,3.637-3.543,3.829c0.279,0.24,0.527,0.713,0.527,1.437c0,1.037-0.01,1.874-0.01,2.129 c0,0.208,0.14,0.449,0.534,0.373c3.081-1.028,5.302-3.935,5.302-7.362C15.76,3.906,12.285,0.431,7.999,0.431z"/></svg>
+</span><span class="username">Wonicon</span></a>
+
+          </li>
+          
+
+          
+        </ul>
+      </div>
+
+      <div class="footer-col footer-col-3">
+        <p>Powered by Jekyll with default theme
+</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+
+
+  </body>
+
+</html>

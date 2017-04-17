@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Lab 06</title>
+  <meta name="description" content="本实验是最后一个操作系统实验，并且是选做，即不做不扣分，做了可以加分。">
+
+  <link rel="stylesheet" href="/oslab/css/main.css">
+  <link rel="canonical" href="http://www.wonicon.com/oslab/lab-06.html">
+  <link rel="alternate" type="application/rss+xml" title="操作系统实验2016" href="http://www.wonicon.com/oslab/feed.xml">
+  <link rel="stylesheet" type="text/css" media="screen" href="css/toc.css">
+</head>
+
+
+  <body>
+
+    <header class="site-header">
+
+  <div class="wrapper">
+
+    <a class="site-title" href="/oslab/">操作系统实验2016</a>
+
+    <nav class="site-nav">
+      <a href="#" class="menu-icon">
+        <svg viewBox="0 0 18 15">
+          <path fill="#424242" d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.031C17.335,0,18,0.665,18,1.484L18,1.484z"/>
+          <path fill="#424242" d="M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0c0-0.82,0.665-1.484,1.484-1.484 h15.031C17.335,6.031,18,6.696,18,7.516L18,7.516z"/>
+          <path fill="#424242" d="M18,13.516C18,14.335,17.335,15,16.516,15H1.484C0.665,15,0,14.335,0,13.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.031C17.335,12.031,18,12.696,18,13.516L18,13.516z"/>
+        </svg>
+      </a>
+
+      <div class="trigger">
+        
+          
+        
+          
+        
+      </div>
+    </nav>
+
+  </div>
+
+</header>
+
+
+    <div class="page-content">
+      <div class="wrapper">
+        <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title" itemprop="name headline">Lab 06</h1>
+  </header>
+
+  <div class="post-content" itemprop="articleBody">
+    <div id="toc-container"><table class="toc" id="toc"><tbody><tr><td>
+<div id="toctitle"><h2>Contents</h2></div>
+<ul>
+<li class="toc_level-1 toc_section-1"><a href="#tocAnchor-1-1"><span class="tocnumber">1</span> <span class="toctext">实验提交</span></a></li>
+<li class="toc_level-1 toc_section-2">
+<a href="#tocAnchor-1-2"><span class="tocnumber">2</span> <span class="toctext">实验要求</span></a><ul>
+<li class="toc_level-2 toc_section-3"><a href="#tocAnchor-1-2-1"><span class="tocnumber">2.1</span> <span class="toctext">ls      [注意！后面所有的命令全部依赖于ls，即必须在实现了ls之后才能获得加分]</span></a></li>
+<li class="toc_level-2 toc_section-4"><a href="#tocAnchor-1-2-2"><span class="tocnumber">2.2</span> <span class="toctext">cat     [5分]</span></a></li>
+<li class="toc_level-2 toc_section-5"><a href="#tocAnchor-1-2-3"><span class="tocnumber">2.3</span> <span class="toctext">touch   [10分]</span></a></li>
+<li class="toc_level-2 toc_section-6"><a href="#tocAnchor-1-2-4"><span class="tocnumber">2.4</span> <span class="toctext">echo    [5分]</span></a></li>
+<li class="toc_level-2 toc_section-7"><a href="#tocAnchor-1-2-5"><span class="tocnumber">2.5</span> <span class="toctext">&gt;, &gt;&gt;   [20分,依赖于cat和echo]</span></a></li>
+<li class="toc_level-2 toc_section-8"><a href="#tocAnchor-1-2-6"><span class="tocnumber">2.6</span> <span class="toctext">cd      [15分，依赖于lab4的选做]</span></a></li>
+<li class="toc_level-2 toc_section-9"><a href="#tocAnchor-1-2-7"><span class="tocnumber">2.7</span> <span class="toctext">执行程序    [10分]</span></a></li>
+<li class="toc_level-2 toc_section-10"><a href="#tocAnchor-1-2-8"><span class="tocnumber">2.8</span> <span class="toctext">readline    [20分，依赖于上面所有的命令，因为指令太少的话readline没有意义]</span></a></li>
+<li class="toc_level-2 toc_section-11"><a href="#tocAnchor-1-2-9"><span class="tocnumber">2.9</span> <span class="toctext">[Ctrl-C]        [30分，依赖于“执行程序”]</span></a></li>
+</ul>
+</li>
+<li class="toc_level-1 toc_section-12"><a href="#tocAnchor-1-12"><span class="tocnumber">3</span> <span class="toctext">实验参考资料</span></a></li>
+</ul>
+</td></tr></tbody></table></div>
+<p>本实验是最后一个操作系统实验，并且是选做，即不做不扣分，做了可以加分。</p>
+
+<h2 id="tocAnchor-1-1">实验提交</h2>
+
+<p>截止时间: 2016/07/09 23:59:59 (<strong>注意：因为课程成绩提交的时间限制，本次实验迟交没有成绩！</strong>)</p>
+
+<p>请大家在提交的实验报告中注明你的邮箱，方便我们及时给你一些反馈信息。</p>
+
+<p>学术诚信: 如果你确实无法完成实验，你可以选择不提交，作为学术诚信的奖励，你将会获得10%的分数；但若发现抄袭现象，抄袭双方(或团体)在本次实验中得 0 分。</p>
+
+<p>提交地址：<a href="http://cslabcms.nju.edu.cn/">http://cslabcms.nju.edu.cn/</a></p>
+
+<p>提交格式: 你需要将整个工程打包上传，特别地，我们会清除中间结果重新编译，若编译不通过，你将损失相应的分数（请在报告中注明你实验所使用的 gcc 的版本，以便助教处理一些 gcc 版本带来的问题）. 我们会使用脚本进行批量解压缩. 压缩包的命名只能包含你的学号。另外为了防止编码问题，压缩包中的所有文件都不要包含中文.如果你需要多次提交，请先手动删除旧的提交记录(提交网站允许下载，删除自己的提交记录)，否则若脚本解压时出现多次提交相互覆盖的现象，后果自负.我们只接受以下格式的压缩包：</p>
+
+<ul>
+<li>tar.gz</li>
+<li>tar.bz2</li>
+<li>zip</li>
+</ul>
+
+<p>若提交的压缩包因格式原因无法被脚本识别，后果自负。</p>
+
+<p>请你在实验截止前务必确认你提交的内容符合要求(格式、相关内容等)，你可以下载你提交的内容进行确认。如果由于你的原因给我们造成了不必要的麻烦，视情况而定，在本次实验中你将会被扣除一定的分数，最高可达 50% 。</p>
+
+<p>git 版本控制：我们建议你使用 git 管理你的项目，如果你提交的实验中包含均匀合理的 git 记录，你将会获得 10% 的分数奖励（请注意，本实验的 Makefile 是由你自己准备的，你可以选择像 PA 中一样在每一次 make 后增加新的 git 记录作为备份，但是请注意，这样生成的 git log 一般是无意义的，所以不能作为加分项）。为此，请你确认提交的压缩包中包含一个名为 .git 的文件夹。</p>
+
+<p>实验报告要求：本次实验你必须在实验报告中写明自己为shell实现了哪些功能，以方便助教测试。<strong>如果你实现了某个功能但是没有在报告中注明，将不被记分。</strong>然后你还应该在实验报告中写明实现过程。</p>
+
+<p>分数分布：
+助教根据实现情况给分</p>
+
+<p>解释：
+- 本次实验的加分加到整个实验上</p>
+
+<h2 id="tocAnchor-1-2">实验要求</h2>
+
+<p>本次实验只有实验要求，不提供具体的实现方案。</p>
+
+<p>本次实验的目标是在文件系统的基础上实现一个简单的shell，在shell中你可以选择完成这些功能：</p>
+
+<ul>
+<li>ls</li>
+<li>cat</li>
+<li>touch</li>
+<li>echo</li>
+<li>重定向</li>
+<li>cd：</li>
+<li>执行程序</li>
+<li>readline</li>
+<li>[Ctrl-C]</li>
+</ul>
+
+<p>以下是对上述指令的解释。</p>
+
+<h3 id="tocAnchor-1-2-1">ls      [注意！后面所有的命令全部依赖于ls，即必须在实现了ls之后才能获得加分]</h3>
+
+<p>ls是Linux中的一个常用指令，其基本功能就不必赘述了。ls有很多选项，最常用的是-a, -t和-h。</p>
+
+<ul>
+<li>必须实现：   [20分]
+
+<ul>
+<li>ls -a：显示目录下所有文件；ls显示目录下除了以"."开头的文件外的其它文件；</li>
+<li>ls -l：输出文件的详细信息；</li>
+<li>选项的正交性：比如，ls -a -l输出所有文件的详细信息；</li>
+</ul>
+</li>
+<li>可选实现：   [10分]
+
+<ul>
+<li>ls -t：按最后修改时间顺序输出；</li>
+<li>ls -h：输出的文件大小用B, KB, MB等单位表示。</li>
+</ul>
+</li>
+</ul>
+
+<h3 id="tocAnchor-1-2-2">cat     [5分]</h3>
+
+<p>实现基本功能即可</p>
+
+<h3 id="tocAnchor-1-2-3">touch   [10分]</h3>
+
+<p>Linux的<a href="http://linux.die.net/man/1/touch">touch</a>的功能详见链接，必须实现-c选项，其它选项可选。</p>
+
+<h3 id="tocAnchor-1-2-4">echo    [5分]</h3>
+
+<p>实现基本功能即可</p>
+
+<h3 id="tocAnchor-1-2-5">&gt;, &gt;&gt;   [20分,依赖于cat和echo]</h3>
+
+<p>实现重定向功能。考虑到如果程序结构设计不合理，实现重定向功能十分困难，因此我们只要求对echo和cat指令做重定向。
+在这种放宽的条件下，你可以将重定向的符号看作是cat或者echo的一个选项。</p>
+
+<h3 id="tocAnchor-1-2-6">cd      [15分，依赖于lab4的选做]</h3>
+
+<p>如果你在lab5中完成了多级目录，那么你可以在ls的基础上可以选择完成cd命令。
+需要注意的是，如果要完成cd，那么必须支持文件的“相对路径”访问，这是一个挑战。</p>
+
+<h3 id="tocAnchor-1-2-7">执行程序    [10分]</h3>
+
+<p>执行用户给定的可执行文件，若给定的字符串不是可执行文件，那么进行错误提示</p>
+
+<h3 id="tocAnchor-1-2-8">readline    [20分，依赖于上面所有的命令，因为指令太少的话readline没有意义]</h3>
+
+<p>即在NEMU中使用到的libreadline的部分功能。</p>
+
+<ul>
+<li>必须完成：通过“↑”键得到历史输入的命令</li>
+<li>其它自选</li>
+</ul>
+
+<h3 id="tocAnchor-1-2-9">[Ctrl-C]        [30分，依赖于“执行程序”]</h3>
+
+<p>终止正在执行的程序，或清除正在输入的命令，有相当大的挑战性。</p>
+
+<h2 id="tocAnchor-1-12">实验参考资料</h2>
+
+<ol>
+<li>
+<a href="https://pdos.csail.mit.edu/6.828/2014/tools.html">JOS</a>中从lab1开始便有一个基本的shell，有基本的执行逻辑，可以选择直接继承JOS的响应代码，也可以借鉴其中的一些设计。</li>
+<li>NEMU中的UI设计也是一个不错的参考，包括用户命令的解析。注意，我们没有正则表达式库可以使用，因此可以对文件名做出限制以简化实现。</li>
+<li>关于Linux命令的功能，请RTFM</li>
+</ol>
+
+  </div>
+
+  <div id="disqus_thread"></div>
+  <script>
+    var disqus_config = function () {
+      this.page.url = "http://www.wonicon.com/oslab/lab-06.html";
+      this.page.identifier = "/oslab/lab-06.html";
+    };
+    (function() {
+      var d = document, s = d.createElement('script');
+      s.src = '//wonicon.disqus.com/embed.js';
+      s.setAttribute('data-timestamp', +new Date());
+      (d.head || d.body).appendChild(s);
+    })();
+  </script>
+  <noscript>
+    Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a>
+  </noscript>
+</article>
+
+      </div>
+    </div>
+
+    <footer class="site-footer">
+
+  <div class="wrapper">
+
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-3">
+        <p>Powered by Jekyll with default theme
+</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+
+
+  </body>
+
+</html>

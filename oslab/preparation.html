@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>实验准备</title>
+  <meta name="description" content="实验背景">
+
+  <link rel="stylesheet" href="/oslab/css/main.css">
+  <link rel="canonical" href="http://www.wonicon.com/oslab/preparation.html">
+  <link rel="alternate" type="application/rss+xml" title="操作系统实验2016" href="http://www.wonicon.com/oslab/feed.xml">
+  <link rel="stylesheet" type="text/css" media="screen" href="css/toc.css">
+</head>
+
+
+  <body>
+
+    <header class="site-header">
+
+  <div class="wrapper">
+
+    <a class="site-title" href="/oslab/">操作系统实验2016</a>
+
+    <nav class="site-nav">
+      <a href="#" class="menu-icon">
+        <svg viewBox="0 0 18 15">
+          <path fill="#424242" d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.031C17.335,0,18,0.665,18,1.484L18,1.484z"/>
+          <path fill="#424242" d="M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0c0-0.82,0.665-1.484,1.484-1.484 h15.031C17.335,6.031,18,6.696,18,7.516L18,7.516z"/>
+          <path fill="#424242" d="M18,13.516C18,14.335,17.335,15,16.516,15H1.484C0.665,15,0,14.335,0,13.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.031C17.335,12.031,18,12.696,18,13.516L18,13.516z"/>
+        </svg>
+      </a>
+
+      <div class="trigger">
+        
+          
+        
+          
+        
+      </div>
+    </nav>
+
+  </div>
+
+</header>
+
+
+    <div class="page-content">
+      <div class="wrapper">
+        <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title" itemprop="name headline">实验准备</h1>
+  </header>
+
+  <div class="post-content" itemprop="articleBody">
+    <div id="toc-container"><table class="toc" id="toc"><tbody><tr><td>
+<div id="toctitle"><h2>Contents</h2></div>
+<ul>
+<li class="toc_level-1 toc_section-1">
+<a href="#tocAnchor-1-1"><span class="tocnumber">1</span> <span class="toctext">实验背景</span></a><ul>
+<li class="toc_level-2 toc_section-2"><a href="#tocAnchor-1-1-1"><span class="tocnumber">1.1</span> <span class="toctext">实验目的</span></a></li>
+<li class="toc_level-2 toc_section-3"><a href="#tocAnchor-1-1-2"><span class="tocnumber">1.2</span> <span class="toctext">实验平台</span></a></li>
+</ul>
+</li>
+<li class="toc_level-1 toc_section-4">
+<a href="#tocAnchor-1-4"><span class="tocnumber">2</span> <span class="toctext">实验准备</span></a><ul>
+<li class="toc_level-2 toc_section-5"><a href="#tocAnchor-1-4-1"><span class="tocnumber">2.1</span> <span class="toctext">安装 QEMU</span></a></li>
+<li class="toc_level-2 toc_section-6"><a href="#tocAnchor-1-4-2"><span class="tocnumber">2.2</span> <span class="toctext">运行 QEMU</span></a></li>
+</ul>
+</li>
+</ul>
+</td></tr></tbody></table></div>
+<h2 id="tocAnchor-1-1">实验背景</h2>
+
+<h3 id="tocAnchor-1-1-1">实验目的</h3>
+
+<p>实现一个可以在硬件模拟器上启动并运行的简单的操作系统内核，并编写一个简单的小游戏作为用户程序让这个内核加载并运行。</p>
+
+<h3 id="tocAnchor-1-1-2">实验平台</h3>
+
+<p>我们主要在 Linux 下进行开发，主要使用 Linux 下的开发工具链，主要有：</p>
+
+<ul>
+<li>make：项目构建工具</li>
+<li>gcc：编译器</li>
+<li>ld：链接器</li>
+<li>objcopy: 用于抽取 Boot Loader 的代码</li>
+<li>dd: 用于制作磁盘镜像</li>
+<li>gdb: 调试器</li>
+<li>qemu: 硬件模拟器</li>
+</ul>
+
+<p>我们实验所制作的内核，是能够在传统的 BIOS 主板上运行的，但是直接在硬件上运行不利于我们进行调试，所以我们使用 <a href="http://wiki.qemu.org/Main_Page">QEMU</a> 作为硬件模拟平台。QEMU 是一个硬件模拟器，可以模拟模拟多种架构的计算机系统（不仅仅是 CPU，还包括了显示器、磁盘等完整的外设）。我们将把独立编译出来的 Boot Loader、 Kernel、 Game（实验一中 Kernel 和 Game 要作为一个整体一起编译）制作成磁盘文件，QEMU 将这个磁盘文件作为其运行时的磁盘，从中读取引导扇区并执行。</p>
+
+<h2 id="tocAnchor-1-4">实验准备</h2>
+
+<h3 id="tocAnchor-1-4-1">安装 QEMU</h3>
+
+<p>我们假设你使用的环境是 Debian 7.8 的最小安装版本（即断网安装netinst版本镜像），32位。并假设你的系统安装有 sudo，包管理工具为 apt-get，并且能连结到外网。</p>
+
+<p>执行以下指令以安装 QEMU</p>
+<div class="highlight"><pre><code class="language-" data-lang="">sudo apt-get update # 更新源
+sudo apt-get install qemu # 安装 QEMU
+</code></pre></div>
+<p>安装完成后，输入命令<code>qemu-system-i386</code>观察我们需要的 QEMU 是否成功安装上了。虽然默认有 <code>qemu</code> 命令，但是保险起见，我们主要使用 qemu-system-i386。</p>
+
+<p>在 Debian 7.8 下从官方源安装的 QEMU 版本在 1.x.x，如果你想使用最新的 QEMU，可以按<a href="http://wiki.qemu.org/Hosts/Linux">这个教程</a>自行编译。</p>
+
+<p>QEMU 启动后会弹出一个图形窗口作为模拟的显示器。如果你的终端模拟器不支持窗口转发，那么会出现如下的错误提示：</p>
+
+<blockquote>
+<p>Could not initialize SDL(No available video device) - exiting</p>
+</blockquote>
+
+<p>在 PA 中有关于窗口转发的相关说明(<a href="https://nju-ics.gitbooks.io/ics2015-programming-assignment/content/4.4.html">链接</a>)，这里不再赘述。另外推荐一个 Windows 下的终端模拟器：<a href="http://mobaxterm.mobatek.net/download.html">MobaXterm</a>，自带 X server，默认开启窗口转发功能。</p>
+
+<h3 id="tocAnchor-1-4-2">运行 QEMU</h3>
+
+<p>简单来说， QEMU 的命令行语法是这样的：</p>
+<div class="highlight"><pre><code class="language-" data-lang="">qemu-system-i386 [options] disk_image
+</code></pre></div>
+<p>其中 <code>options</code> 是一些设置选项，暂时不需要关注，但是 <code>disk_image</code> 是必须的。<code>disk_image</code> 即磁盘镜像，它代表一个磁盘，你可以把任意一个文件当做磁盘镜像作为 QEMU 的输入参数。当这个文件的第 511 个字节是 0x55，同时第 512 个字节是 0xAA 时， QEMU 会将这个磁盘视作可引导的磁盘，并将这个文件的前 512 个字节当做机器指令从头开始执行（这里的说法很不严谨，更详细的内容请参考实验一的讲义），这样的前 512 个字节叫做引导扇区。</p>
+
+<p>下面我们来写一个在 QEMU 里输出 "Hello, World!" 的程序，帮助你了解制作一个有实际功能的可引导的磁盘镜像的基本流程。首先我们有这样一份汇编代码：</p>
+<div class="highlight"><pre><code class="language-asm" data-lang="asm">.code16               # 告诉 gcc 之后生成 16 位机器指令
+                      # 开启保护模式之前 QEMU 只能执行 16 位机器指令
+
+.globl start          # 将符号 start 暴露给链接器
+start:                # start 表示代码的起始地址
+  cli                 # 关中断
+  mov $0x13, %ah      # 设置模式：显式字符串
+  mov $0x01, %al      # 设置显式模式：(1) 使用 BL 指定的样式 (2) 更新光标
+  mov $0x00, %bh      # 设置代码页，与字体相关； QEMU 下仅第一个代码页可用
+  mov $0x4F, %bl      # 设置字符样式：红底白字无高亮
+  mov $(end-str), %cx # 优雅地计算字符串的长度
+  mov $str, %dx       # 将 ES:BP 指向字符串 (Step 1)
+  mov %dx, %bp        # 将 ES:BP 指向字符串 (Step 2)
+  mov $0x00, %dh      # 首字符输出在第 1 行
+  mov $0x00, %dl      # 首字符输出在第 1 列
+  int $0x10           # BIOS 中断，VGA 相关服务
+loop:                 # loop 表示下面这条指令的首地址
+  jmp loop            # 无限循环，防止继续执行超出内存
+
+str:                  # str 表示字符串首地址
+  .ascii "Hello, World!"
+end:                  # end 表示字符串之后的地址，用于计算长度
+</code></pre></div>
+<p>将其保存为 mbr.S 后，用如下的命令编译并链接：</p>
+<div class="highlight"><pre><code class="language-" data-lang="">gcc -m32 -c mbr.S
+ld -m elf_i386 -e start -Ttext=0x7C00 -o mbr mbr.o
+</code></pre></div>
+<p>编译链接选项的具体解释如下：<br>
+<code>-m32</code> 防止在 64 位机器上生成 64 位机器指令，因为我们的目标平台是 32 位的 i386；<br>
+<code>-c</code> 表示只编译不链接，因为我们需要特殊的链接姿势；<br>
+<code>-m elf_i386</code> 表示生成 32 位的 ELF 格式可执行文件；<br>
+<code>-e start</code> 表示 start 作为程序入口地址， start 必须外部可见，即是非 static 修饰的 C 符号或 .globl 修饰的 AT&amp;T 格式的汇编代码符号；<br>
+<code>-Ttext=0x7C00</code> 表示链接脚本，这里只是简单地让代码段从 0x7C00 开始，因为这里是实际刚开始执行这 512 个字节执行时 CS:IP 指向的地址，而代码中 <code>mov $(end-str), %cx</code> 使用了绝对寻址，所以需要设定好起始地址；<br>
+<code>-o mbr</code> 生成文件为 mbr</p>
+
+<p>生成了具有实际意义的机器执行序列后，下面就该制作 512B 大小的引导扇区了，不过别急，我们先看看这个生成的可执行文件有多大：</p>
+<div class="highlight"><pre><code class="language-" data-lang="">stat mbr
+  File: ‘mbr’
+  Size: 3549        Blocks: 8          IO Block: 4096   regular file
+</code></pre></div>
+<p>竟然有 3.5KB (╯°Д°)╯︵ ┻━┻<br>
+┬—┬ ノ( ' - 'ノ) 这主要是因为 ld 按当前系统的标准链接了很多与运行环境相关的代码，以及 ELF 文件的一些描述信息。这些对于在操作系统下跑的用户程序来说是必要的，但是对于在裸机上跑的程序来说，这些都是无关的信息，所以我们首先要用如下的命令把需要的机器指令序列提取出来：</p>
+<div class="highlight"><pre><code class="language-" data-lang="">objcopy --strip-all --only-section=.text --output-target=binary mbr mbr
+</code></pre></div>
+<p>这个命令的具体解释如下：<br>
+<code>--strip-all</code> 去掉符号表等信息<br>
+<code>--only-section=.text</code> 只拷贝代码段的内容<br>
+<code>--output-target=binary</code> 生成纯二进制<br>
+<code>mbr mbr</code> 前者为输入，后者为输出</p>
+
+<p>然后我们用特殊的反汇编姿势查看我们的引导扇区：</p>
+<div class="highlight"><pre><code class="language-" data-lang="">objdump -D -b binary -mi386 -Maddr16,data16 mbr
+
+mbr:     file format binary
+
+
+Disassembly of section .data:
+
+00000000 &lt;.data&gt;:
+   0:   b4 13                   mov    $0x13,%ah
+   2:   b0 01                   mov    $0x1,%al
+   4:   b7 00                   mov    $0x0,%bh
+   6:   b3 4f                   mov    $0x4f,%bl
+   8:   b9 0d 00                mov    $0xd,%cx
+   b:   ba 17 7c                mov    $0x7c17,%dx
+   e:   89 d5                   mov    %dx,%bp
+  10:   b6 00                   mov    $0x0,%dh
+  12:   b2 00                   mov    $0x0,%dl
+  14:   cd 10                   int    $0x10
+  16:   f4                      hlt
+  17:   48                      dec    %ax
+  18:   65                      gs
+  19:   6c                      insb   (%dx),%es:(%di)
+  1a:   6c                      insb   (%dx),%es:(%di)
+  1b:   6f                      outsw  %ds:(%si),(%dx)
+  1c:   2c 20                   sub    $0x20,%al
+  1e:   57                      push   %di
+  1f:   6f                      outsw  %ds:(%si),(%dx)
+  20:   72 6c                   jb     0x8e
+  22:   64                      fs
+  23:   21                      .byte 0x21
+</code></pre></div>
+<p>由于此时已经无法区分数据和代码了，所以后面的字符串也被当做代码来解释，在 QEMU 中是如此，所以要在进入数据区域之前跳转到别的地方或者使用 <code>hlt</code> 或者　<code>jmp</code> 阻止　CPU 继续往下执行。</p>
+
+<p>在看一下文件大小：</p>
+<div class="highlight"><pre><code class="language-" data-lang="">stat mbr
+  File: ‘mbr’
+  Size: 36          Blocks: 8          IO Block: 4096   regular file
+</code></pre></div>
+<p>只有 36B，可以愉快地制作引导扇区了。</p>
+
+<p>关于制作引导扇区，只需要知道当前文件的大小，然后在文件末尾随便写入任意字节直到文件大小达到　510B，此时依次写入 0x55， 0xAA，达到 512B。</p>
+
+<p>这里提供一个 Ruby 版本的生成引导扇区的脚本，当然，只要遵循上述流程，使用任意语言都可以，一般来说，脚本语言或者命令行比较方便。 Ruby 一般不默认安装， <code>sudo apt-get install ruby</code> 即可。</p>
+<div class="highlight"><pre><code class="language-ruby" data-lang="ruby"><span class="n">mbr</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="no">ARGV</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s2">"a"</span><span class="p">)</span>
+<span class="n">mbr</span><span class="p">.</span><span class="nf">write</span><span class="p">(</span><span class="s2">"</span><span class="se">\x00</span><span class="s2">"</span> <span class="o">*</span> <span class="p">(</span><span class="mi">510</span> <span class="o">-</span> <span class="n">mbr</span><span class="p">.</span><span class="nf">size</span><span class="p">))</span>
+<span class="n">mbr</span><span class="p">.</span><span class="nf">write</span><span class="p">(</span><span class="s2">"</span><span class="se">\x55\xAA</span><span class="s2">"</span><span class="p">)</span>
+<span class="n">mbr</span><span class="p">.</span><span class="nf">close</span>
+</code></pre></div>
+<p>将上述代码保存成 mkmbr.rb，然后执行命令 <code>ruby mkmbr.rb mbr</code>，之后就可以用 <code>qemu-system-i386</code> 查看运行效果：</p>
+
+<p><img src="assets/hello-world.png" alt="img"></p>
+
+<p>下面提供关于上述文字输出的参考资料：<br>
+<a href="http://www.ctyme.com/intr/int-10.htm">VGA相关的BIOS中断</a><br>
+<a href="http://www.ctyme.com/intr/rb-0210.htm">显示字符串的中断服务</a><br>
+<a href="https://en.wikipedia.org/wiki/VGA-compatible_text_mode#Text_buffer">字符显式格式</a><br>
+<a href="https://en.wikipedia.org/wiki/Video_Graphics_Array#Color_palette">字符颜色表</a><br></p>
+
+<blockquote>
+<p>按上面的步骤，根据参考资料修改代码，尝试不同的输出效果，以熟悉 QEMU、汇编代码和引导扇区的制作。</p>
+</blockquote>
+
+  </div>
+
+  <div id="disqus_thread"></div>
+  <script>
+    var disqus_config = function () {
+      this.page.url = "http://www.wonicon.com/oslab/preparation.html";
+      this.page.identifier = "/oslab/preparation.html";
+    };
+    (function() {
+      var d = document, s = d.createElement('script');
+      s.src = '//wonicon.disqus.com/embed.js';
+      s.setAttribute('data-timestamp', +new Date());
+      (d.head || d.body).appendChild(s);
+    })();
+  </script>
+  <noscript>
+    Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a>
+  </noscript>
+</article>
+
+      </div>
+    </div>
+
+    <footer class="site-footer">
+
+  <div class="wrapper">
+
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-3">
+        <p>Powered by Jekyll with default theme
+</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+
+
+  </body>
+
+</html>

@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>(gem5) SMT 的 ROB 动态分配问题</title>
+  <meta name="description" content="默认情况下，支持 SMT 的 O3CPU 实现的 ROB 采取按线程数平均分配的 Partitioned 策略，在gem5/src/cpu/o3/O3CPU.py 中有所设置，搜索关键词 smtROBPolicy.根据 gem5/src/cpu/o3/rob_impl.hh 里 Rob&lt;Impl&gt; 的...">
+
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="canonical" href="http://www.wonicon.com/gem5-o3-dynamic-rob.html">
+  <link rel="alternate" type="application/rss+xml" title="Wonicon 的日常灌水" href="http://www.wonicon.com/feed.xml">
+</head>
+
+
+  <body>
+
+    <header class="site-header">
+
+  <div class="wrapper">
+
+    <a class="site-title" href="/">Wonicon 的日常灌水</a>
+
+    <nav class="site-nav">
+      <a href="#" class="menu-icon">
+        <svg viewBox="0 0 18 15">
+          <path fill="#424242" d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.031C17.335,0,18,0.665,18,1.484L18,1.484z"/>
+          <path fill="#424242" d="M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0c0-0.82,0.665-1.484,1.484-1.484 h15.031C17.335,6.031,18,6.696,18,7.516L18,7.516z"/>
+          <path fill="#424242" d="M18,13.516C18,14.335,17.335,15,16.516,15H1.484C0.665,15,0,14.335,0,13.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.031C17.335,12.031,18,12.696,18,13.516L18,13.516z"/>
+        </svg>
+      </a>
+
+      <div class="trigger">
+        
+          
+          <a class="page-link" href="/about.html">关于</a>
+          
+        
+          
+        
+          
+        
+      </div>
+    </nav>
+
+  </div>
+
+</header>
+
+
+    <div class="page-content">
+      <div class="wrapper">
+        <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title" itemprop="name headline">(gem5) SMT 的 ROB 动态分配问题</h1>
+    <p class="post-meta">
+      <time datetime="2016-08-03T00:00:00+08:00" itemprop="datePublished">Aug 3, 2016</time>
+      分类: 备忘
+    </p>
+    <p class="post-meta">
+    标签:
+    
+    </p>
+  </header>
+
+  <div class="post-content" itemprop="articleBody">
+    <p>默认情况下，支持 SMT 的 O3CPU 实现的 ROB 采取按线程数平均分配的 Partitioned 策略，在
+<code class="highlighter-rouge">gem5/src/cpu/o3/O3CPU.py</code> 中有所设置，搜索关键词 <code class="highlighter-rouge">smtROBPolicy</code>.
+根据 <code class="highlighter-rouge">gem5/src/cpu/o3/rob_impl.hh</code> 里 <code class="highlighter-rouge">Rob&lt;Impl&gt;</code> 的构造函数的逻辑，目前 ROB 支持的策略有
+Dynamic, Partitioned 以及 Threshold (嘛，大小写无所谓）。</p>
+
+<p>虽说 ROB 支持 Dynamic 策略，即多个线程先到先得地占有 ROB 中的表项，但是如果真的如此设置，用
+SE 模式同时跑两个大点的程序，应该很快就会在 <code class="highlighter-rouge">void ROB&lt;Impl&gt;::insertInst(DynInstPtr &amp;inst)</code> 里触发断言
+<code class="highlighter-rouge">assert(numInstsInROB != numEntries)</code>. 断言的语义是：在往 ROB 中插入新指令时，ROB 不应该是满的。<del>说好的支持 Dynamic 呢？gem5 你算计我！</del>造成这个问题的直接原因基本是上层代码错误地判断了 ROB 的实际空闲容量，在不恰当的场合给 ROB 提供了指令。经过一番调试，需要修改的地方主要有三处：ROB 类返回空闲表项数的方法、Rename 段获悉最新空闲表项的策略、Rename 段计算实际空闲表项的策略。</p>
+
+<h2 id="返回空闲项数的方法">返回空闲项数的方法</h2>
+
+<p><code class="highlighter-rouge">ROB</code> 类针对每个线程返回空闲表项数的方法定义在 <code class="highlighter-rouge">gem5/src/cpu/o3/rob_impl.hh</code>，代码如下：</p>
+
+<div class="language-c++ highlighter-rouge"><pre class="highlight"><code><span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span> <span class="nc">Impl</span><span class="o">&gt;</span>
+<span class="kt">int</span>
+<span class="n">ROB</span><span class="o">&lt;</span><span class="n">Impl</span><span class="o">&gt;::</span><span class="n">numFreeEntries</span><span class="p">(</span><span class="n">ThreadID</span> <span class="n">tid</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">return</span> <span class="n">maxEntries</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">-</span> <span class="n">threadEntries</span><span class="p">[</span><span class="n">tid</span><span class="p">];</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+
+<p><code class="highlighter-rouge">threadEntries[tid]</code> 即时地记录每个线程在 ROB 中占有的表项，<code class="highlighter-rouge">maxEntries[tid]</code> 表示每个线程最大的 ROB 表项数，在 <code class="highlighter-rouge">ROB</code> 类的构造函数里，它是这么初始化的：</p>
+
+<div class="language-c++ highlighter-rouge"><pre class="highlight"><code><span class="k">if</span> <span class="p">(</span><span class="n">policy</span> <span class="o">==</span> <span class="s">"dynamic"</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">robPolicy</span> <span class="o">=</span> <span class="n">Dynamic</span><span class="p">;</span>
+
+    <span class="c1">//Set Max Entries to Total ROB Capacity
+</span>    <span class="k">for</span> <span class="p">(</span><span class="n">ThreadID</span> <span class="n">tid</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">tid</span> <span class="o">&lt;</span> <span class="n">numThreads</span><span class="p">;</span> <span class="n">tid</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">maxEntries</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">numEntries</span><span class="p">;</span>
+    <span class="p">}</span>
+
+<span class="p">}</span>
+</code></pre>
+</div>
+
+<p>这里的问题是，在 Dynamic 模式下，ROB 最大表项数是全局唯一的，如果依然使用这个方法，就会导致处理一个线程的重命名和分派时，会错误地得到偏多的空闲表项数，意图往 ROB 中塞过多的指令，触发断言。当然还有一个不带参数 tid 的 <code class="highlighter-rouge">numFreeEntries</code> 方法，但是 O3CPU 对单线程和多线程一视同仁，都是基于 tid 去访问各类资源的。所以这个方法里需要判断一下 ROB 的 policy 是否为 Dynamic, 如果是的话，就转去执行没有参数的同名方法。</p>
+
+<h2 id="rename-段获悉最新空闲表项的策略">Rename 段获悉最新空闲表项的策略</h2>
+
+<p>Rename 段通过名为 <code class="highlighter-rouge">RenameQueue</code> 的 time buffer 与 Commit 段通信，Commit 段负责维护 ROB, 包括从这个 time buffer 取出上个周期 Rename 段送进来的指令，以及向它写入 ROB 当前的容量状态供下个周期的 Rename 段参考。用选项 <code class="highlighter-rouge">--debug-flag=Rename</code> 运行 gem5 可以观察到，线程 A 和 B “发射”了不同条指令后，下个周期 Rename 时，它们获悉的空闲 ROB 项数自然是相应减少的，但是数值却很可能并不相同。要知道在 Dynamic 策略下，空闲表项数应该是全局唯一的。这个不一致的空闲表项数，也可能导致 Rename 段错误地发射过多的指令。</p>
+
+<p>Rename 段获取 Commit 段 ROB 的空闲表项信息的代码定义在 <code class="highlighter-rouge">gem5/src/cpu/o3/rename_impl.hh</code>, 如下所示：</p>
+
+<div class="language-c++ highlighter-rouge"><pre class="highlight"><code><span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span> <span class="nc">Impl</span><span class="o">&gt;</span>
+<span class="kt">void</span>
+<span class="n">DefaultRename</span><span class="o">&lt;</span><span class="n">Impl</span><span class="o">&gt;::</span><span class="n">readFreeEntries</span><span class="p">(</span><span class="n">ThreadID</span> <span class="n">tid</span><span class="p">)</span>
+<span class="p">{</span>
+	<span class="c1">// ...
+</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">fromCommit</span><span class="o">-&gt;</span><span class="n">commitInfo</span><span class="p">[</span><span class="n">tid</span><span class="p">].</span><span class="n">usedROB</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">freeEntries</span><span class="p">[</span><span class="n">tid</span><span class="p">].</span><span class="n">robEntries</span> <span class="o">=</span>
+            <span class="n">fromCommit</span><span class="o">-&gt;</span><span class="n">commitInfo</span><span class="p">[</span><span class="n">tid</span><span class="p">].</span><span class="n">freeROBEntries</span><span class="p">;</span>
+        <span class="n">emptyROB</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">fromCommit</span><span class="o">-&gt;</span><span class="n">commitInfo</span><span class="p">[</span><span class="n">tid</span><span class="p">].</span><span class="n">emptyROB</span><span class="p">;</span>
+    <span class="p">}</span>
+
+	<span class="c1">// ...
+</span><span class="p">}</span>
+</code></pre>
+</div>
+
+<p>然后去 Commit 段的实现代码里找 <code class="highlighter-rouge">freeROBEntries</code> 的相关内容，文件是 <code class="highlighter-rouge">gem5/src/o3/cpu/commit_impl.hh</code>. 会匹配到几个位置，但是应该很容易发现感兴趣的代码片段：</p>
+
+<div class="language-c++ highlighter-rouge"><pre class="highlight"><code><span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span> <span class="nc">Impl</span><span class="o">&gt;</span>
+<span class="kt">void</span>
+<span class="n">DefaultCommit</span><span class="o">&lt;</span><span class="n">Impl</span><span class="o">&gt;::</span><span class="n">commit</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="c1">// ...
+</span>
+    <span class="k">while</span> <span class="p">(</span><span class="n">threads</span> <span class="o">!=</span> <span class="n">end</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">ThreadID</span> <span class="n">tid</span> <span class="o">=</span> <span class="o">*</span><span class="n">threads</span><span class="o">++</span><span class="p">;</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">changedROBNumEntries</span><span class="p">[</span><span class="n">tid</span><span class="p">])</span> <span class="p">{</span>
+            <span class="n">toIEW</span><span class="o">-&gt;</span><span class="n">commitInfo</span><span class="p">[</span><span class="n">tid</span><span class="p">].</span><span class="n">usedROB</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+            <span class="n">toIEW</span><span class="o">-&gt;</span><span class="n">commitInfo</span><span class="p">[</span><span class="n">tid</span><span class="p">].</span><span class="n">freeROBEntries</span> <span class="o">=</span> <span class="n">rob</span><span class="o">-&gt;</span><span class="n">numFreeEntries</span><span class="p">(</span><span class="n">tid</span><span class="p">);</span>
+
+        <span class="c1">// ...
+</span>	<span class="p">}</span>
+
+	<span class="c1">// ...
+</span><span class="p">}</span>
+</code></pre>
+</div>
+
+<p>如上，在一个遍历线程 id 的循环里，要先检查 <code class="highlighter-rouge">changedROBNumEntries[tid]</code> 才会对 time buffer 的字段进行设置。这个用于判断的变量主要在下面这个场合为 <code class="highlighter-rouge">true</code>:</p>
+
+<div class="language-c++ highlighter-rouge"><pre class="highlight"><code><span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span> <span class="nc">Impl</span><span class="o">&gt;</span>
+<span class="kt">void</span>
+<span class="n">DefaultCommit</span><span class="o">&lt;</span><span class="n">Impl</span><span class="o">&gt;::</span><span class="n">getInsts</span><span class="p">()</span>
+<span class="p">{</span>
+	<span class="c1">// ...
+</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">inst_num</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">inst_num</span> <span class="o">&lt;</span> <span class="n">insts_to_process</span><span class="p">;</span> <span class="o">++</span><span class="n">inst_num</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">DynInstPtr</span> <span class="n">inst</span><span class="p">;</span>
+
+        <span class="n">inst</span> <span class="o">=</span> <span class="n">fromRename</span><span class="o">-&gt;</span><span class="n">insts</span><span class="p">[</span><span class="n">inst_num</span><span class="p">];</span>
+        <span class="n">ThreadID</span> <span class="n">tid</span> <span class="o">=</span> <span class="n">inst</span><span class="o">-&gt;</span><span class="n">threadNumber</span><span class="p">;</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">inst</span><span class="o">-&gt;</span><span class="n">isSquashed</span><span class="p">()</span> <span class="o">&amp;&amp;</span>
+            <span class="n">commitStatus</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">!=</span> <span class="n">ROBSquashing</span> <span class="o">&amp;&amp;</span>
+            <span class="n">commitStatus</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">!=</span> <span class="n">TrapPending</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">changedROBNumEntries</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+
+			<span class="c1">// ...
+</span>
+            <span class="n">rob</span><span class="o">-&gt;</span><span class="n">insertInst</span><span class="p">(</span><span class="n">inst</span><span class="p">);</span>
+
+			<span class="c1">// ...
+</span>		<span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+
+<p>这里就是往 ROB 里插入指令的地方。插入指令，ROB 的使用情况肯定是变化了的，但是这里只为该指令所属的线程标记了变化的 flag, 只有也只有该线程对应的 ROB 信息会得到更新，这是基于两个线程 ROB 资源隔离的情况下实现的代码！在共享情况下是不充分的。这里的修改方法可以是识别 policy 是否为 Dynamic, 如果是的话，就额外地为所用线程进行标记。要注意的是 <code class="highlighter-rouge">changedROBNumEntries[tid] = true</code> 在同一模块里还有若干个，最好封装并替换。</p>
+
+<h2 id="计算实际的空闲表项">计算实际的空闲表项</h2>
+
+<p>完成上述修改应该很容易发现一个问题：如果当前周期获知 ROB 剩余 N 个空闲项，而线程 A 有 3 条指令要发射，线程 B 有 2 条指令要发射，会不会出现总计发射 5 条指令，下个周期再次撑爆 ROB 的情况？答案是会的。原来的代码基本没有考虑线程间的资源干扰。这个问题比较容易解决，只需要在 Rename 段加个记录当前周期已经发射，预计要被 ROB 接收的指令数量即可。首先要在何时的地方进行累加，下面是推荐的位置：</p>
+
+<div class="language-c++ highlighter-rouge"><pre class="highlight"><code><span class="c1">// file: gem5/src/cpu/o3/rename_impl.hh
+</span><span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span> <span class="nc">Impl</span><span class="o">&gt;</span>
+<span class="kt">void</span>
+<span class="n">DefaultRename</span><span class="o">&lt;</span><span class="n">Impl</span><span class="o">&gt;::</span><span class="n">renameInsts</span><span class="p">(</span><span class="n">ThreadID</span> <span class="n">tid</span><span class="p">)</span>
+<span class="p">{</span>
+	<span class="c1">// ...
+</span>
+    <span class="n">DPRINTF</span><span class="p">(</span><span class="n">Rename</span><span class="p">,</span> <span class="s">"[tid:%u]: %i available instructions to "</span>
+            <span class="s">"send iew.</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">tid</span><span class="p">,</span> <span class="n">insts_available</span><span class="p">);</span>
+	<span class="c1">// Right here, use insts_available!
+</span>
+	<span class="c1">// ...
+</span><span class="p">}</span>
+</code></pre>
+</div>
+
+<p>在同一个方法的上面，就是计算空闲 ROB 表项的位置，在那里将这个累加数考虑进去：</p>
+
+<div class="language-c++ highlighter-rouge"><pre class="highlight"><code><span class="c1">// file: gem5/src/cpu/o3/rename_impl.hh
+</span><span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span> <span class="nc">Impl</span><span class="o">&gt;</span>
+<span class="kt">void</span>
+<span class="n">DefaultRename</span><span class="o">&lt;</span><span class="n">Impl</span><span class="o">&gt;::</span><span class="n">renameInsts</span><span class="p">(</span><span class="n">ThreadID</span> <span class="n">tid</span><span class="p">)</span>
+<span class="p">{</span>
+	<span class="c1">// ...
+</span>
+    <span class="kt">int</span> <span class="n">free_rob_entries</span> <span class="o">=</span> <span class="n">calcFreeROBEntries</span><span class="p">(</span><span class="n">tid</span><span class="p">);</span>  <span class="c1">// Here!
+</span>
+	<span class="c1">// ...
+</span><span class="p">}</span>
+</code></pre>
+</div>
+
+<p>不过，即便是这样，还是会触发断言挂掉的……</p>
+
+<p>与上述现象类似的，还有一些同周期的数据会影响 ROB 实际的空闲表项数量。Rename 和 ROB 的更新位于不同的流水段，它们的行为实质上是并行执行的。也就是说，在 Rename 这边扎堆发射指令的同时，ROB 那边也在将上个周期扎堆送进来的指令一个接一个的写进去。这个周期没有结束，所以不可能知道 ROB 插入完上个周期的指令后的空闲容量，但是可以通过连线（time buffer）知道这个周期开始（即上个周期结束）ROB 有多少空闲容量，以及 ROB 要插入的指令数。原来的代码其实已经考虑到了这个转发问题，就在 <code class="highlighter-rouge">calcFreeROBEntries</code> 中，如下所示：</p>
+
+<div class="language-c++ highlighter-rouge"><pre class="highlight"><code><span class="c1">// file: gem5/src/cpu/o3/rename_impl.hh
+</span><span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span> <span class="nc">Impl</span><span class="o">&gt;</span>
+<span class="kr">inline</span> <span class="kt">int</span>
+<span class="n">DefaultRename</span><span class="o">&lt;</span><span class="n">Impl</span><span class="o">&gt;::</span><span class="n">calcFreeROBEntries</span><span class="p">(</span><span class="n">ThreadID</span> <span class="n">tid</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">num_free</span> <span class="o">=</span> <span class="n">freeEntries</span><span class="p">[</span><span class="n">tid</span><span class="p">].</span><span class="n">robEntries</span> <span class="o">-</span>
+                  <span class="p">(</span><span class="n">instsInProgress</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">-</span> <span class="n">fromIEW</span><span class="o">-&gt;</span><span class="n">iewInfo</span><span class="p">[</span><span class="n">tid</span><span class="p">].</span><span class="n">dispatched</span><span class="p">);</span>
+
+    <span class="c1">//DPRINTF(Rename,"[tid:%i]: %i rob free\n",tid,num_free);
+</span>
+    <span class="k">return</span> <span class="n">num_free</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+
+<p><code class="highlighter-rouge">instsInProgress[tid]</code> 是该线程重命名过的，没有提交的指令数，<code class="highlighter-rouge">fromIEW-&gt;iewInfo[tid].dispatched</code> 则是 IEW 段的，分派到指令队列，没有提交的指令数，它们的差值就是重命名过的，但是没有写入 ROB 的指令数，这些值都是该周期起始的数据。为了适配 Dynamic 的场景，不仅需要去掉该线程的，而且要去掉所有线程的，对 tid 进行下遍历处理即可。</p>
+
+<h2 id="总结">总结</h2>
+
+<p>虽然 ROB 支持 Dynamic 的资源分配策略，但是上层代码完全是按照各线程隔离的思路来实现的。为了在已有的代码上适配 Dynamic 的共享策略，需要用条件判断开特例，特例里又有各种循环累加。代码冗杂，开销也更多。感觉用多态屏蔽这些差异可能会比较好，但是非 100% 的分支预测错误和关键路径的查虚函数表表访存那个代价更大就不得而知了，不过本来只需要用一个变量维护的全局信息，最后不得不用循环计算出来，感觉还是可以优化一下的。</p>
+
+<p>同为核内资源的 Load Store Queue 以及 Instruction Queue 要想共享化，也会遇到类似的问题。不过物理寄存器堆一开始就是共享的。</p>
+
+  </div>
+
+  <div id="disqus_thread"></div>
+<script>
+  var disqus_config = function () {
+    this.page.url = "http://www.wonicon.com/gem5-o3-dynamic-rob.html";
+    this.page.identifier = "/gem5-o3-dynamic-rob.html";
+  };
+  (function() {
+    var d = document, s = d.createElement('script');
+    s.src = '//wonicon.disqus.com/embed.js';
+    s.setAttribute('data-timestamp', +new Date());
+    (d.head || d.body).appendChild(s);
+  })();
+</script>
+<noscript>
+  Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a>
+</noscript>
+
+
+</article>
+
+      </div>
+    </div>
+
+    <footer class="site-footer">
+
+  <div class="wrapper">
+
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <a href="mailto: conciselove@outlook.com">
+  <span class="icon icon--github">
+    <?xml version="1.0" encoding="utf-8"?>
+<!-- Generated by IcoMoon.io -->
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="32" height="32" viewBox="0 0 32 32">
+<path d="M28 5h-24c-2.209 0-4 1.792-4 4v13c0 2.209 1.791 4 4 4h24c2.209 0 4-1.791 4-4v-13c0-2.208-1.791-4-4-4zM2 10.25l6.999 5.25-6.999 5.25v-10.5zM30 22c0 1.104-0.898 2-2 2h-24c-1.103 0-2-0.896-2-2l7.832-5.875 4.368 3.277c0.533 0.398 1.166 0.6 1.8 0.6 0.633 0 1.266-0.201 1.799-0.6l4.369-3.277 7.832 5.875zM30 20.75l-7-5.25 7-5.25v10.5zM17.199 18.602c-0.349 0.262-0.763 0.4-1.199 0.4s-0.851-0.139-1.2-0.4l-12.8-9.602c0-1.103 0.897-2 2-2h24c1.102 0 2 0.897 2 2l-12.801 9.602z"></path>
+</svg>
+
+  </span>
+  <span class="username">
+    conciselove@outlook.com
+  </span>
+</a>
+
+        </ul>
+      </div>
+
+      <div class="footer-col footer-col-2">
+        <ul class="social-media-list">
+          
+          <li>
+            <a href="https://github.com/Wonicon"><span class="icon icon--github"><svg viewBox="0 0 16 16"><path fill="#828282" d="M7.999,0.431c-4.285,0-7.76,3.474-7.76,7.761 c0,3.428,2.223,6.337,5.307,7.363c0.388,0.071,0.53-0.168,0.53-0.374c0-0.184-0.007-0.672-0.01-1.32 c-2.159,0.469-2.614-1.04-2.614-1.04c-0.353-0.896-0.862-1.135-0.862-1.135c-0.705-0.481,0.053-0.472,0.053-0.472 c0.779,0.055,1.189,0.8,1.189,0.8c0.692,1.186,1.816,0.843,2.258,0.645c0.071-0.502,0.271-0.843,0.493-1.037 C4.86,11.425,3.049,10.76,3.049,7.786c0-0.847,0.302-1.54,0.799-2.082C3.768,5.507,3.501,4.718,3.924,3.65 c0,0,0.652-0.209,2.134,0.796C6.677,4.273,7.34,4.187,8,4.184c0.659,0.003,1.323,0.089,1.943,0.261 c1.482-1.004,2.132-0.796,2.132-0.796c0.423,1.068,0.157,1.857,0.077,2.054c0.497,0.542,0.798,1.235,0.798,2.082 c0,2.981-1.814,3.637-3.543,3.829c0.279,0.24,0.527,0.713,0.527,1.437c0,1.037-0.01,1.874-0.01,2.129 c0,0.208,0.14,0.449,0.534,0.373c3.081-1.028,5.302-3.935,5.302-7.362C15.76,3.906,12.285,0.431,7.999,0.431z"/></svg>
+</span><span class="username">Wonicon</span></a>
+
+          </li>
+          
+
+          
+        </ul>
+      </div>
+
+      <div class="footer-col footer-col-3">
+        <p>Powered by Jekyll with default theme
+</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+
+
+  </body>
+
+</html>

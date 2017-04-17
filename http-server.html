@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>写简单的HTTP服务器遇到的坑</title>
+  <meta name="description" content="listen是用来设置标志位的, 表明一个套接字能够接受连接的状态, 本身不会阻塞.阻塞行为由accept和recv产生.">
+
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="canonical" href="http://www.wonicon.com/http-server.html">
+  <link rel="alternate" type="application/rss+xml" title="Wonicon 的日常灌水" href="http://www.wonicon.com/feed.xml">
+</head>
+
+
+  <body>
+
+    <header class="site-header">
+
+  <div class="wrapper">
+
+    <a class="site-title" href="/">Wonicon 的日常灌水</a>
+
+    <nav class="site-nav">
+      <a href="#" class="menu-icon">
+        <svg viewBox="0 0 18 15">
+          <path fill="#424242" d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.031C17.335,0,18,0.665,18,1.484L18,1.484z"/>
+          <path fill="#424242" d="M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0c0-0.82,0.665-1.484,1.484-1.484 h15.031C17.335,6.031,18,6.696,18,7.516L18,7.516z"/>
+          <path fill="#424242" d="M18,13.516C18,14.335,17.335,15,16.516,15H1.484C0.665,15,0,14.335,0,13.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.031C17.335,12.031,18,12.696,18,13.516L18,13.516z"/>
+        </svg>
+      </a>
+
+      <div class="trigger">
+        
+          
+          <a class="page-link" href="/about.html">关于</a>
+          
+        
+          
+        
+          
+        
+      </div>
+    </nav>
+
+  </div>
+
+</header>
+
+
+    <div class="page-content">
+      <div class="wrapper">
+        <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title" itemprop="name headline">写简单的HTTP服务器遇到的坑</h1>
+    <p class="post-meta">
+      <time datetime="2016-01-30T00:00:00+08:00" itemprop="datePublished">Jan 30, 2016</time>
+      分类: 经验
+    </p>
+    <p class="post-meta">
+    标签:
+    
+      <span> 编程</span>
+    
+      <span> 网络</span>
+    
+      <span> HTTP</span>
+    
+      <span> C</span>
+    
+      <span> Linux</span>
+    
+      <span> socket</span>
+    
+    </p>
+  </header>
+
+  <div class="post-content" itemprop="articleBody">
+    <p><code class="highlighter-rouge">listen</code>是用来设置标志位的, 表明一个套接字能够接受连接的状态, 本身不会阻塞.
+阻塞行为由<code class="highlighter-rouge">accept</code>和<code class="highlighter-rouge">recv</code>产生.</p>
+
+<p>在 C 代码里硬编码HTTP响应头时, 不要写出这样的代码:</p>
+
+<div class="language-c highlighter-rouge"><pre class="highlight"><code><span class="kt">char</span> <span class="n">header</span><span class="p">[]</span> <span class="o">=</span> <span class="s">"HTTP/1.1 200 OK</span><span class="se">\r\n</span><span class="s">\
+                 Server: ServerName</span><span class="se">\r\n</span><span class="s">\
+                 ...</span><span class="se">\r\n</span><span class="s">\
+                 </span><span class="se">\r\n</span><span class="s">"</span><span class="p">;</span>
+</code></pre>
+</div>
+
+<p>这样似乎不是合法的, 因为用<code class="highlighter-rouge">\\</code>转义掉源代码的换行符后, 用于缩进的空格也会被包含到字符串中,
+这样似乎就不符合响应头的格式了.
+如果一定要对齐, 可以这么写:</p>
+
+<div class="language-c highlighter-rouge"><pre class="highlight"><code><span class="kt">char</span> <span class="n">header</span><span class="p">[]</span> <span class="o">=</span> <span class="s">"HTTP/1.1 200 OK</span><span class="se">\r\n</span><span class="s">"</span>
+                <span class="s">"Server: ServerName</span><span class="se">\r\n</span><span class="s">"</span>
+                <span class="s">"...</span><span class="se">\r\n</span><span class="s">"</span>
+                <span class="s">"</span><span class="se">\r\n</span><span class="s">"</span><span class="p">;</span>
+</code></pre>
+</div>
+
+<p>另外需要小心的是, 标志报文头结束是用两个<code class="highlighter-rouge">\r\n</code>, 但是一般都会习惯在条目后面加换行,
+所以只需要单独写一个<code class="highlighter-rouge">\r\n</code>就够了, 也就是用额外的一个空白行来标志报头结束.</p>
+
+<p>在 Linux 系统下, <code class="highlighter-rouge">\r\n</code>的行为似乎和<code class="highlighter-rouge">\n</code>是一样的, 如果按<code class="highlighter-rouge">\r</code>将光标移到首列,
+<code class="highlighter-rouge">\n</code>将光标移到下一行的首列来理解的, 似乎可以说得通.
+但是在写报文头时, 也可以直接使用’\n’, 似乎在<code class="highlighter-rouge">write</code>里面会做相应的替换?</p>
+
+<p>实现过程中遇到了一个比较难搞的问题. 我用<code class="highlighter-rouge">fork</code>将对HTTP请求的响应放入子进程中处理,
+结果发现浏览器根据 html 文件的超链接发出的请求超过 5 个后就开始 pending.
+但是如果我改成单进程服务器顺序处理每个请求, 就可以正常地响应, 没有 pending.
+虽然查看了<code class="highlighter-rouge">chrome://net-internals</code>但是没有发现有价值的线索,
+网上的讨论主要是针对浏览器端, 比如 AdBlock 插件会导致这个问题.
+后来我对比网上
+<a href="http://blog.abhijeetr.com/2010/04/very-simple-http-server-writen-in-c.html">别人的</a>
+能正常工作的简单 HTTP 服务器实现, 发现它在用<code class="highlighter-rouge">close</code>销毁连接的套接字之前,
+还用了<code class="highlighter-rouge">shutdown</code>关闭连接, 我如法炮制后问题得以解决.
+不过还是不太清楚原理, 首先需要了解下<code class="highlighter-rouge">shutdown</code>的原理,
+然后去尝试对比下有无<code class="highlighter-rouge">shutdown</code>情况下<code class="highlighter-rouge">chrome://net-internals#Events</code>里有什么区别.</p>
+
+<hr />
+
+<p><strong>UPDATE</strong>: 请教了老师之后找到了原因所在。父子进程共享文件描述符，即便我在子进程里关闭了套接字，但是这个套接字还是打开的，因为父进程还在持有它。这样就不会进入挥手过程，而 HTTP/1.1 是支持长连接的，浏览器就会持续使用旧的套接字来发送请求。所以会出现有些请求“丢失”的表现。解决方法是父进程也将该套接字关闭。</p>
+
+<p>至于为什么 shutdown 有效，那是因为比起 close，
+shutdown 更加显式地修改了套接字的属性，让通信双方都知道连接断开了。</p>
+
+<p>另外在子进程中最好也把父进程自己的监听套接字也关闭掉。</p>
+
+<hr />
+
+<p>这个简单的 HTTP 服务器, 只能处理 GET 方法, 基本就是直接返回文件, 其余一概不管.
+主要还是用来熟悉套接字的使用吧. 具体代码在GitHub上: https://github.com/Wonicon/MaybeServer.</p>
+
+  </div>
+
+  <div id="disqus_thread"></div>
+<script>
+  var disqus_config = function () {
+    this.page.url = "http://www.wonicon.com/http-server.html";
+    this.page.identifier = "/http-server.html";
+  };
+  (function() {
+    var d = document, s = d.createElement('script');
+    s.src = '//wonicon.disqus.com/embed.js';
+    s.setAttribute('data-timestamp', +new Date());
+    (d.head || d.body).appendChild(s);
+  })();
+</script>
+<noscript>
+  Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a>
+</noscript>
+
+
+</article>
+
+      </div>
+    </div>
+
+    <footer class="site-footer">
+
+  <div class="wrapper">
+
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <a href="mailto: conciselove@outlook.com">
+  <span class="icon icon--github">
+    <?xml version="1.0" encoding="utf-8"?>
+<!-- Generated by IcoMoon.io -->
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="32" height="32" viewBox="0 0 32 32">
+<path d="M28 5h-24c-2.209 0-4 1.792-4 4v13c0 2.209 1.791 4 4 4h24c2.209 0 4-1.791 4-4v-13c0-2.208-1.791-4-4-4zM2 10.25l6.999 5.25-6.999 5.25v-10.5zM30 22c0 1.104-0.898 2-2 2h-24c-1.103 0-2-0.896-2-2l7.832-5.875 4.368 3.277c0.533 0.398 1.166 0.6 1.8 0.6 0.633 0 1.266-0.201 1.799-0.6l4.369-3.277 7.832 5.875zM30 20.75l-7-5.25 7-5.25v10.5zM17.199 18.602c-0.349 0.262-0.763 0.4-1.199 0.4s-0.851-0.139-1.2-0.4l-12.8-9.602c0-1.103 0.897-2 2-2h24c1.102 0 2 0.897 2 2l-12.801 9.602z"></path>
+</svg>
+
+  </span>
+  <span class="username">
+    conciselove@outlook.com
+  </span>
+</a>
+
+        </ul>
+      </div>
+
+      <div class="footer-col footer-col-2">
+        <ul class="social-media-list">
+          
+          <li>
+            <a href="https://github.com/Wonicon"><span class="icon icon--github"><svg viewBox="0 0 16 16"><path fill="#828282" d="M7.999,0.431c-4.285,0-7.76,3.474-7.76,7.761 c0,3.428,2.223,6.337,5.307,7.363c0.388,0.071,0.53-0.168,0.53-0.374c0-0.184-0.007-0.672-0.01-1.32 c-2.159,0.469-2.614-1.04-2.614-1.04c-0.353-0.896-0.862-1.135-0.862-1.135c-0.705-0.481,0.053-0.472,0.053-0.472 c0.779,0.055,1.189,0.8,1.189,0.8c0.692,1.186,1.816,0.843,2.258,0.645c0.071-0.502,0.271-0.843,0.493-1.037 C4.86,11.425,3.049,10.76,3.049,7.786c0-0.847,0.302-1.54,0.799-2.082C3.768,5.507,3.501,4.718,3.924,3.65 c0,0,0.652-0.209,2.134,0.796C6.677,4.273,7.34,4.187,8,4.184c0.659,0.003,1.323,0.089,1.943,0.261 c1.482-1.004,2.132-0.796,2.132-0.796c0.423,1.068,0.157,1.857,0.077,2.054c0.497,0.542,0.798,1.235,0.798,2.082 c0,2.981-1.814,3.637-3.543,3.829c0.279,0.24,0.527,0.713,0.527,1.437c0,1.037-0.01,1.874-0.01,2.129 c0,0.208,0.14,0.449,0.534,0.373c3.081-1.028,5.302-3.935,5.302-7.362C15.76,3.906,12.285,0.431,7.999,0.431z"/></svg>
+</span><span class="username">Wonicon</span></a>
+
+          </li>
+          
+
+          
+        </ul>
+      </div>
+
+      <div class="footer-col footer-col-3">
+        <p>Powered by Jekyll with default theme
+</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+
+
+  </body>
+
+</html>
