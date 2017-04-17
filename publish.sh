@@ -1,4 +1,6 @@
-cd $1
+cd _site
+cp ../CNAME .
+cp ../../nju-oslab-lecture/_site oslab
 git init
 git add -A
 git commit -m 'Publish'
