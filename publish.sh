@@ -1,3 +1,8 @@
+if [ ! -d _site ]
+then
+    jekyll build
+fi
+
 cd _site
 cp ../CNAME .
 cp -r ../../nju-oslab-lecture/_site oslab
